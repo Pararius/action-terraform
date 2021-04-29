@@ -5,7 +5,7 @@ const { spawnSync } = require( 'child_process' );
 
 (async () => {
   const terraformVersion = core.getInput('terraform_version');
-  tf_setup();
+  await tf_setup();
   const tf = spawnSync('terraform', ['version']);
 })().catch(error => {
   core.setFailed(error.message);
