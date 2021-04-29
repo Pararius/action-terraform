@@ -11,7 +11,7 @@ const tf_setup = __nccwpck_require__(7591);
 
 try {
   const terraformVersion = core.getInput('terraform_version');
-  tf_setup.run();
+  tf_setup();
   
 } catch (error) {
   core.setFailed(error.message);
