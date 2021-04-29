@@ -4,7 +4,7 @@ const tf_setup = require('setup-terraform/lib/setup-terraform');
 
 try {
   const terraformVersion = core.getInput('terraform_version');
-  tf_setup.run();
+  await tf_setup();
   
 } catch (error) {
   core.setFailed(error.message);
