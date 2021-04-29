@@ -14,6 +14,7 @@ const { spawnSync } = __nccwpck_require__( 3129 );
   const terraformVersion = core.getInput('terraform_version');
   await tf_setup();
   const tf = spawnSync('terraform', ['version']);
+  core.info(`tf ${terraformVersion}: ${tf.stdout.toString()}`);
 })().catch(error => {
   core.setFailed(error.message);
 });
