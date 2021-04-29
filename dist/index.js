@@ -9,12 +9,18 @@ const core = __nccwpck_require__(4147);
 const github = __nccwpck_require__(7364);
 const tf_setup = __nccwpck_require__(7591);
 const { spawnSync } = __nccwpck_require__( 3129 );
+const { Cipher } = __nccwpck_require__(6417);
 
 (async () => {
   const terraformVersion = core.getInput('terraform_version');
+  core.startGroup('Setup terraform');
   await tf_setup();
   const tf = spawnSync('terraform', ['version']);
   core.info(`tf ${terraformVersion}: ${tf.stdout.toString()}`);
+  core.endGroup();
+  core.startGroup('Initialize terraform');
+  core.info('Initializing......... done!');
+  core.endGroup();
 })().catch(error => {
   core.setFailed(error.message);
 });
