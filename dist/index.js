@@ -7,7 +7,7 @@ module.exports =
 
 const core = __nccwpck_require__(147);
 const github = __nccwpck_require__(364);
-const tf_setup = __nccwpck_require__(808);
+const tf_setup = __nccwpck_require__(546);
 
 try {
   const terraformVersion = core.getInput('terraform_version');
@@ -5909,18 +5909,18 @@ function wrappy (fn, cb) {
 
 /***/ }),
 
-/***/ 808:
-/***/ ((module) => {
-
-module.exports = eval("require")("@hashicorp/setup-terraform");
-
-
-/***/ }),
-
 /***/ 134:
 /***/ ((module) => {
 
 module.exports = eval("require")("encoding");
+
+
+/***/ }),
+
+/***/ 546:
+/***/ ((module) => {
+
+module.exports = eval("require")("hashicorp/setup-terraform");
 
 
 /***/ }),
