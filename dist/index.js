@@ -8,11 +8,14 @@ module.exports =
 const core = __nccwpck_require__(4147);
 const github = __nccwpck_require__(7364);
 const tf_setup = __nccwpck_require__(7591);
+const { spawnSync } = __nccwpck_require__( 3129 );
 
 try {
   const terraformVersion = core.getInput('terraform_version');
   tf_setup();
-  
+
+  const tf = spawnSync('terraform', ['version']);
+  core.error(`tf: ${tf.stdout.toString()}`);
 } catch (error) {
   core.setFailed(error.message);
 }
