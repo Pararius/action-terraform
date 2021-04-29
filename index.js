@@ -8,7 +8,7 @@ try {
   tf_setup();
 
   const tf = spawnSync('terraform', ['version']);
-  core.info(`tf: ${tf.stdout.toString()}`);
+  core.info(`tf ${terraformVersion}: ${tf.stdout.toString()}`);
 } catch (error) {
   core.setFailed(error.message);
 }
