@@ -10,12 +10,19 @@ const github = __nccwpck_require__(7364);
 const tf_setup = __nccwpck_require__(7591);
 const { spawnSync } = __nccwpck_require__( 3129 );
 
+function sleep (time) {
+  return new Promise((resolve) => setTimeout(resolve, time));
+}
+
 try {
   const terraformVersion = core.getInput('terraform_version');
   tf_setup();
 
   const tf = spawnSync('terraform', ['version']);
-  core.info(`tf ${terraformVersion}: ${tf.stdout.toString()}`);
+  sleep(2000).then(() => {
+    core.info(`tf1 ${terraformVersion}: ${tf.stdout.toString()}`);
+  });
+core.info(`tf2 ${terraformVersion}: ${tf.stdout.toString()}`);
 } catch (error) {
   core.setFailed(error.message);
 }
@@ -58922,11 +58929,11 @@ async function run () {
     const osPlatform = os.platform();
     const osArch = os.arch();
 
-    core.info(`Finding releases for Terraform version ${version}`);
+    core.debug(`Finding releases for Terraform version ${version}`);
     const release = await releases.getRelease('terraform', version, 'GitHub Action: Setup Terraform');
     const platform = mapOS(osPlatform);
     const arch = mapArch(osArch);
-    core.info(`Getting build for Terraform version ${release.version}: ${platform} ${arch}`);
+    core.debug(`Getting build for Terraform version ${release.version}: ${platform} ${arch}`);
     const build = release.getBuild(platform, arch);
     if (!build) {
       throw new Error(`Terraform version ${version} not available for ${platform} and ${arch}`);
