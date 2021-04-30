@@ -10,17 +10,16 @@ const github = __nccwpck_require__(7364);
 const io = __nccwpck_require__(977);
 const tf_setup = __nccwpck_require__(7591);
 const { spawnSync } = __nccwpck_require__( 3129 );
-const { Cipher } = __nccwpck_require__(6417);
 
 function terraform(params) {
   const options = {
     cwd: core.getInput('terraform_directory')
   }
-  const _process = spawnSync('terraform', params, options);
+  const tf = spawnSync('terraform', params, options);
   return {
-    stdout: _process.stdout.toString(),
-    stderr: _process.stderr.toString(),
-    status: _process.status
+    stdout: tf.stdout.toString(),
+    stderr: tf.stderr.toString(),
+    status: tf.status
   }
 }
 
@@ -30,7 +29,7 @@ function terraform(params) {
   core.startGroup('Setup Terraform');
   await tf_setup();
   core.info(`Terraform version: ${terraformVersion}`);
-  core.info(`Working directory: ${process.cwd()}${terraformDirectory}`);
+  core.info(`Working directory: ${terraformDirectory}`);
   core.endGroup();
   core.startGroup('terraform version');
   const tfv = terraform(['version']);
@@ -55,6 +54,7 @@ function terraform(params) {
 })().catch(error => {
   core.setFailed(error.message);
 });
+
 
 /***/ }),
 

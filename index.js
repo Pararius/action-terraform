@@ -3,17 +3,16 @@ const github = require('@actions/github');
 const io = require('@actions/io');
 const tf_setup = require('setup-terraform/lib/setup-terraform');
 const { spawnSync } = require( 'child_process' );
-const { Cipher } = require('crypto');
 
 function terraform(params) {
   const options = {
     cwd: core.getInput('terraform_directory')
   }
-  const _process = spawnSync('terraform', params, options);
+  const tf = spawnSync('terraform', params, options);
   return {
-    stdout: _process.stdout.toString(),
-    stderr: _process.stderr.toString(),
-    status: _process.status
+    stdout: tf.stdout.toString(),
+    stderr: tf.stderr.toString(),
+    status: tf.status
   }
 }
 
@@ -23,7 +22,7 @@ function terraform(params) {
   core.startGroup('Setup Terraform');
   await tf_setup();
   core.info(`Terraform version: ${terraformVersion}`);
-  core.info(`Working directory: ${process.cwd()}${terraformDirectory}`);
+  core.info(`Working directory: ${terraformDirectory}`);
   core.endGroup();
   core.startGroup('terraform version');
   const tfv = terraform(['version']);
