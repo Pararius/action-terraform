@@ -48,11 +48,11 @@ function terraform(params) {
   core.info(`status: ${tff.status}`);
   core.info(tff.stdout);
   core.info(tff.stderr);
+  core.endGroup();
   const tffc = terraform(['fmt', '-check']);
   if (tffc.status > 0) {
     core.setFailed('Failed to pass `terraform fmt` checks!');
   }
-  core.endGroup();
   core.startGroup('terraform plan');
   const tfp = terraform(['plan']);
   core.info(`status: ${tfp.status}`);
