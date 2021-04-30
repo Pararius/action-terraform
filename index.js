@@ -6,15 +6,23 @@ const { Cipher } = require('crypto');
 
 (async () => {
   const terraformVersion = core.getInput('terraform_version');
-  core.startGroup('Install terraform');
+  core.startGroup('Setup Terraform');
   await tf_setup();
   const tfv = spawnSync('terraform', ['version']);
   core.info(`Expected Terraform version: ${terraformVersion}`);
   core.info(`Actual Terraform version: ${tfv.stdout.toString()}`);
   core.endGroup();
-  core.startGroup('Initialize terraform');
+  core.startGroup('terraform init');
   const tfi = spawnSync('terraform', ['init']);
   core.info(tfi.stdout.toString());
+  core.endGroup();
+  core.startGroup('terraform fmt');
+  const tff = spawnSync('terraform', ['fmt', '-diff', '-write=false', '-list=false']);
+  core.info(tff.stdout.toString());
+  core.endGroup();
+  core.startGroup('terraform plan');
+  const tfp = spawnSync('terraform', ['plan']);
+  core.info(tfp.stdout.toString());
   core.endGroup();
 })().catch(error => {
   core.setFailed(error.message);
