@@ -23,7 +23,7 @@ const { Cipher } = __nccwpck_require__(6417);
   core.info(`Actual Terraform version: ${tfv.stdout.toString()}`);
   core.info(`Working directory: ${terraformDirectory}`);
   core.info(exec.exec('pwd'));
-  core.info(exec.exec('ls', ['-l']));
+  core.info(exec.exec('ls', ['-l', terraformDirectory]));
   core.endGroup();
   core.startGroup('terraform init');
   const tfi = spawnSync('terraform', [`-chdir=${terraformDirectory}`, 'init']);
