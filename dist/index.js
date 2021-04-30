@@ -25,24 +25,23 @@ function terraform(params) {
   core.startGroup('Setup Terraform');
   await tf_setup();
   const tfv = terraform(['version']);
-  // const tfv = spawnSync('terraform', ['version']);
   core.info(`Expected Terraform version: ${terraformVersion}`);
   core.info(`Actual Terraform version: ${tfv.stdout.toString()}`);
   core.info(`Working directory: ${terraformDirectory}`);
   core.endGroup();
   core.startGroup('terraform init');
-  const tfi = spawnSync('terraform', [`-chdir=${terraformDirectory}`, 'init']);
+  const tfi = terraform(['init']);
   core.info(tfi.stdout.toString());
   core.info(tfi.stderr.toString());
   tfi
   core.endGroup();
   core.startGroup('terraform fmt');
-  const tff = spawnSync('terraform', [`-chdir=${terraformDirectory}`, 'fmt', '-diff', '-write=false', '-list=false']);
+  const tff = terraform(['fmt', '-diff', '-write=false', '-list=false']);
   core.info(tff.stdout.toString());
   core.info(tff.stderr.toString());
   core.endGroup();
   core.startGroup('terraform plan');
-  const tfp = spawnSync('terraform', [`-chdir=${terraformDirectory}`, 'plan']);
+  const tfp = terraform(['plan']);
   core.info(tfp.stdout.toString());
   core.info(tfp.stderr.toString());
   core.endGroup();
