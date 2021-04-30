@@ -47,11 +47,14 @@ function terraform(params) {
     core.setFailed('Failed to pass `terraform fmt` checks!');
   }
   core.startGroup('terraform plan');
-  const tfp = terraform(['plan']);
+  const tfp = terraform(['plan', '-out=terraform.plan']);
   core.info(`status: ${tfp.status}`);
   core.info(tfp.stdout);
   core.info(tfp.stderr);
   core.endGroup();
+  if (tfp.status > 0) {
+    core.setFailed('Failed to run `terraform plan`!');
+  }
 })().catch(error => {
   core.setFailed(error.message);
 });
