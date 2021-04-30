@@ -13,6 +13,7 @@ const { Cipher } = __nccwpck_require__(6417);
 
 (async () => {
   const terraformVersion = core.getInput('terraform_version');
+  const terraformDirectory = core.getInput('terraform_directory');
   core.startGroup('Setup Terraform');
   await tf_setup();
   const tfv = spawnSync('terraform', ['version']);
@@ -20,16 +21,16 @@ const { Cipher } = __nccwpck_require__(6417);
   core.info(`Actual Terraform version: ${tfv.stdout.toString()}`);
   core.endGroup();
   core.startGroup('terraform init');
-  const tfi = spawnSync('terraform', ['init']);
+  const tfi = spawnSync('terraform', ['-chdir=${terraformDirectory}', 'init']);
   core.info(tfi.stdout.toString());
   core.endGroup();
   core.startGroup('terraform fmt');
-  const tff = spawnSync('terraform', ['fmt', '-diff', '-write=false', '-list=false']);
+  const tff = spawnSync('terraform', ['-chdir=${terraformDirectory}', 'fmt', '-diff', '-write=false', '-list=false']);
   core.info(tff.stdout.toString());
   core.info(tff.stderr.toString());
   core.endGroup();
   core.startGroup('terraform plan');
-  const tfp = spawnSync('terraform', ['plan']);
+  const tfp = spawnSync('terraform', ['-chdir=${terraformDirectory}', 'plan']);
   core.info(tfp.stdout.toString());
   core.info(tfp.stderr.toString());
   core.endGroup();

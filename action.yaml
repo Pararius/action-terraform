@@ -4,6 +4,10 @@ inputs:
   terraform_version:
     required: true
     description: Version of terraform to use
+  terraform_directory:
+    required: false
+    description: Location of terraform manifests
+    default: ./
 runs:
   using: node12
   main: dist/index.js
