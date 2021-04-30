@@ -8,13 +8,13 @@ const { Cipher } = require('crypto');
   const terraformVersion = core.getInput('terraform_version');
   core.startGroup('Install terraform');
   await tf_setup();
-  const tf = spawnSync('terraform', ['version']);
+  const tfv = spawnSync('terraform', ['version']);
   core.info(`Expected Terraform version: ${terraformVersion}`);
-  core.info(`Actual Terraform version: ${tf.stdout.toString()}`);
+  core.info(`Actual Terraform version: ${tfv.stdout.toString()}`);
   core.endGroup();
   core.startGroup('Initialize terraform');
-  const tf = spawnSync('terraform', ['init']);
-  core.info(tf.stdout.toString());
+  const tfi = spawnSync('terraform', ['init']);
+  core.info(tfi.stdout.toString());
   core.endGroup();
 })().catch(error => {
   core.setFailed(error.message);

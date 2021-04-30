@@ -13,13 +13,15 @@ const { Cipher } = __nccwpck_require__(6417);
 
 (async () => {
   const terraformVersion = core.getInput('terraform_version');
-  core.startGroup('Setup terraform');
+  core.startGroup('Install terraform');
   await tf_setup();
-  const tf = spawnSync('terraform', ['version']);
-  core.info(`tf ${terraformVersion}: ${tf.stdout.toString()}`);
+  const tfv = spawnSync('terraform', ['version']);
+  core.info(`Expected Terraform version: ${terraformVersion}`);
+  core.info(`Actual Terraform version: ${tfv.stdout.toString()}`);
   core.endGroup();
   core.startGroup('Initialize terraform');
-  core.info('Initializing......... done!');
+  const tfi = spawnSync('terraform', ['init']);
+  core.info(tfi.stdout.toString());
   core.endGroup();
 })().catch(error => {
   core.setFailed(error.message);
