@@ -19,7 +19,7 @@ const { Cipher } = __nccwpck_require__(6417);
   await tf_setup();
   const tfv = exec.exec('terraform', ['version']);
   core.info(`Expected Terraform version: ${terraformVersion}`);
-  core.info(`Actual Terraform version: ${tfv.stdout.toString()}`);
+  core.info(`Actual Terraform version: ${tfv.stdout}`);
   core.info(`Working directory: ${terraformDirectory}`);
   core.endGroup();
   core.startGroup('terraform init');
