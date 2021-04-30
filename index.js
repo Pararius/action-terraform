@@ -29,7 +29,6 @@ function terraform(params) {
   const tfv = terraform(['version']);
   core.info(tfv.stdout);
   core.info(tfv.stderr);
-  tfi
   core.endGroup();
   const tfi = terraform(['init']);
   core.info(tfi.stdout);
