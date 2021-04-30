@@ -16,11 +16,11 @@ function terraform(params) {
   const options = {
     cwd: core.getInput('terraform_directory')
   }
-  const process = spawnSync('terraform', params, options);
+  const _process = spawnSync('terraform', params, options);
   return {
-    stdout: process.stdout.toString(),
-    stderr: process.stderr.toString(),
-    status: process.status
+    stdout: _process.stdout.toString(),
+    stderr: _process.stderr.toString(),
+    status: _process.status
   }
 }
 
@@ -30,7 +30,7 @@ function terraform(params) {
   core.startGroup('Setup Terraform');
   await tf_setup();
   core.info(`Terraform version: ${terraformVersion}`);
-  core.info(`Working directory: ${cwd()}${terraformDirectory}`);
+  core.info(`Working directory: ${process.cwd()}${terraformDirectory}`);
   core.endGroup();
   core.startGroup('terraform version');
   const tfv = terraform(['version']);
