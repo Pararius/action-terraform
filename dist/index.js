@@ -6,7 +6,6 @@ module.exports =
 /***/ ((__unused_webpack_module, __unused_webpack_exports, __nccwpck_require__) => {
 
 const core = __nccwpck_require__(4147);
-const exec = __nccwpck_require__(3716);
 const github = __nccwpck_require__(7364);
 const io = __nccwpck_require__(977);
 const tf_setup = __nccwpck_require__(7591);
@@ -22,8 +21,6 @@ const { Cipher } = __nccwpck_require__(6417);
   core.info(`Expected Terraform version: ${terraformVersion}`);
   core.info(`Actual Terraform version: ${tfv.stdout.toString()}`);
   core.info(`Working directory: ${terraformDirectory}`);
-  core.info(exec.exec('pwd'));
-  core.info(exec.exec('ls', ['-l', terraformDirectory]));
   core.endGroup();
   core.startGroup('terraform init');
   const tfi = spawnSync('terraform', [`-chdir=${terraformDirectory}`, 'init']);
