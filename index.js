@@ -5,12 +5,36 @@ const io = require('@actions/io');
 const tf_setup = require('setup-terraform/lib/setup-terraform');
 const { Cipher } = require('crypto');
 
+async function terraform() {
+  let myOutput = '';
+  let myError = '';
+
+  const options = {};
+  options.listeners = {
+    stdout: (data) => {
+      myOutput += data.toString();
+    },
+    stderr: (data) => {
+      myError += data.toString();
+    }
+  };
+  options.cwd = './lib';
+
+  await exec.exec('terraform', ['version'], options);
+
+  retval = new Map();
+  retval.set('stdout', myOutput);
+  retval.set('stderr', myError);
+  return retval;
+}
+
 (async () => {
   const terraformVersion = core.getInput('terraform_version');
   const terraformDirectory = core.getInput('terraform_directory');
   core.startGroup('Setup Terraform');
   await tf_setup();
-  const tfv = exec.exec('terraform', ['version']);
+  // const tfv = exec.exec('terraform', ['version']);
+  const tfv = await terraform();
   core.info(`Expected Terraform version: ${terraformVersion}`);
   core.info(`Actual Terraform version: ${tfv.stdout}`);
   core.info(`Working directory: ${terraformDirectory}`);
