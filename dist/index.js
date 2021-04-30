@@ -12,12 +12,20 @@ const tf_setup = __nccwpck_require__(7591);
 const { spawnSync } = __nccwpck_require__( 3129 );
 const { Cipher } = __nccwpck_require__(6417);
 
+function terraform(params) {
+  const options = {
+    cwd: core.getInput('terraform_directory')
+  }
+  return spawnSync('terraform', params, options);
+}
+
 (async () => {
   const terraformVersion = core.getInput('terraform_version');
   const terraformDirectory = core.getInput('terraform_directory');
   core.startGroup('Setup Terraform');
   await tf_setup();
-  const tfv = spawnSync('terraform', ['version']);
+  const tfv = terraform(['version']);
+  // const tfv = spawnSync('terraform', ['version']);
   core.info(`Expected Terraform version: ${terraformVersion}`);
   core.info(`Actual Terraform version: ${tfv.stdout.toString()}`);
   core.info(`Working directory: ${terraformDirectory}`);
@@ -26,6 +34,7 @@ const { Cipher } = __nccwpck_require__(6417);
   const tfi = spawnSync('terraform', [`-chdir=${terraformDirectory}`, 'init']);
   core.info(tfi.stdout.toString());
   core.info(tfi.stderr.toString());
+  tfi
   core.endGroup();
   core.startGroup('terraform fmt');
   const tff = spawnSync('terraform', [`-chdir=${terraformDirectory}`, 'fmt', '-diff', '-write=false', '-list=false']);

@@ -5,12 +5,20 @@ const tf_setup = require('setup-terraform/lib/setup-terraform');
 const { spawnSync } = require( 'child_process' );
 const { Cipher } = require('crypto');
 
+function terraform(params) {
+  const options = {
+    cwd: core.getInput('terraform_directory')
+  }
+  return spawnSync('terraform', params, options);
+}
+
 (async () => {
   const terraformVersion = core.getInput('terraform_version');
   const terraformDirectory = core.getInput('terraform_directory');
   core.startGroup('Setup Terraform');
   await tf_setup();
-  const tfv = spawnSync('terraform', ['version']);
+  const tfv = terraform(['version']);
+  // const tfv = spawnSync('terraform', ['version']);
   core.info(`Expected Terraform version: ${terraformVersion}`);
   core.info(`Actual Terraform version: ${tfv.stdout.toString()}`);
   core.info(`Working directory: ${terraformDirectory}`);
@@ -19,6 +27,7 @@ const { Cipher } = require('crypto');
   const tfi = spawnSync('terraform', [`-chdir=${terraformDirectory}`, 'init']);
   core.info(tfi.stdout.toString());
   core.info(tfi.stderr.toString());
+  tfi
   core.endGroup();
   core.startGroup('terraform fmt');
   const tff = spawnSync('terraform', [`-chdir=${terraformDirectory}`, 'fmt', '-diff', '-write=false', '-list=false']);
