@@ -25,7 +25,7 @@ async function terraform() {
       myError += data.toString();
     }
   };
-  options.cwd = './lib';
+  options.cwd = core.getInput('terraform_directory');
 
   await exec.exec('terraform', ['version'], options);
 
