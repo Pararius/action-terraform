@@ -29,12 +29,15 @@ function terraform(params) {
   const terraformDirectory = core.getInput('terraform_directory');
   core.startGroup('Setup Terraform');
   await tf_setup();
-  const tfv = terraform(['version']);
-  core.info(`Expected Terraform version: ${terraformVersion}`);
-  core.info(`Actual Terraform version: ${tfv.stdout}`);
+  core.info(`Terraform version: ${terraformVersion}`);
   core.info(`Working directory: ${terraformDirectory}`);
   core.endGroup();
-  core.startGroup('terraform init');
+  core.startGroup('terraform version');
+  const tfv = terraform(['version']);
+  core.info(tfv.stdout);
+  core.info(tfv.stderr);
+  tfi
+  core.endGroup();
   const tfi = terraform(['init']);
   core.info(tfi.stdout);
   core.info(tfi.stderr);
