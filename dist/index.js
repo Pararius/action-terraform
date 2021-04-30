@@ -6,7 +6,9 @@ module.exports =
 /***/ ((__unused_webpack_module, __unused_webpack_exports, __nccwpck_require__) => {
 
 const core = __nccwpck_require__(4147);
+const exec = __nccwpck_require__(3716);
 const github = __nccwpck_require__(7364);
+const io = __nccwpck_require__(977);
 const tf_setup = __nccwpck_require__(7591);
 const { spawnSync } = __nccwpck_require__( 3129 );
 const { Cipher } = __nccwpck_require__(6417);
@@ -19,19 +21,22 @@ const { Cipher } = __nccwpck_require__(6417);
   const tfv = spawnSync('terraform', ['version']);
   core.info(`Expected Terraform version: ${terraformVersion}`);
   core.info(`Actual Terraform version: ${tfv.stdout.toString()}`);
+  core.info(`Working directory: ${terraformDirectory}`);
+  core.info(exec.exec('pwd'));
+  core.info(exec.exec('ls', ['-l']));
   core.endGroup();
   core.startGroup('terraform init');
-  const tfi = spawnSync('terraform', ['init', `-chdir=${terraformDirectory}`]);
+  const tfi = spawnSync('terraform', [`-chdir=${terraformDirectory}`, 'init']);
   core.info(tfi.stdout.toString());
   core.info(tfi.stderr.toString());
   core.endGroup();
   core.startGroup('terraform fmt');
-  const tff = spawnSync('terraform', ['fmt', `-chdir=${terraformDirectory}`, '-diff', '-write=false', '-list=false']);
+  const tff = spawnSync('terraform', [`-chdir=${terraformDirectory}`, 'fmt', '-diff', '-write=false', '-list=false']);
   core.info(tff.stdout.toString());
   core.info(tff.stderr.toString());
   core.endGroup();
   core.startGroup('terraform plan');
-  const tfp = spawnSync('terraform', ['plan', `-chdir=${terraformDirectory}`]);
+  const tfp = spawnSync('terraform', [`-chdir=${terraformDirectory}`, 'plan']);
   core.info(tfp.stdout.toString());
   core.info(tfp.stderr.toString());
   core.endGroup();

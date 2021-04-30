@@ -1,5 +1,7 @@
 const core = require('@actions/core');
+const exec = require('@actions/exec');
 const github = require('@actions/github');
+const io = require('@actions/io');
 const tf_setup = require('setup-terraform/lib/setup-terraform');
 const { spawnSync } = require( 'child_process' );
 const { Cipher } = require('crypto');
@@ -12,6 +14,9 @@ const { Cipher } = require('crypto');
   const tfv = spawnSync('terraform', ['version']);
   core.info(`Expected Terraform version: ${terraformVersion}`);
   core.info(`Actual Terraform version: ${tfv.stdout.toString()}`);
+  core.info(`Working directory: ${terraformDirectory}`);
+  core.info(exec.exec('pwd'));
+  core.info(exec.exec('ls', ['-l']));
   core.endGroup();
   core.startGroup('terraform init');
   const tfi = spawnSync('terraform', [`-chdir=${terraformDirectory}`, 'init']);
