@@ -26,10 +26,12 @@ const { Cipher } = __nccwpck_require__(6417);
   core.startGroup('terraform fmt');
   const tff = spawnSync('terraform', ['fmt', '-diff', '-write=false', '-list=false']);
   core.info(tff.stdout.toString());
+  core.info(tff.stderr.toString());
   core.endGroup();
   core.startGroup('terraform plan');
   const tfp = spawnSync('terraform', ['plan']);
   core.info(tfp.stdout.toString());
+  core.info(tfp.stderr.toString());
   core.endGroup();
 })().catch(error => {
   core.setFailed(error.message);
