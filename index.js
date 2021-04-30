@@ -30,10 +30,10 @@ function terraform(params) {
   core.info(tfv.stdout);
   core.info(tfv.stderr);
   core.endGroup();
+  core.startGroup('terraform init');
   const tfi = terraform(['init']);
   core.info(tfi.stdout);
   core.info(tfi.stderr);
-  tfi
   core.endGroup();
   core.startGroup('terraform fmt');
   const tff = terraform(['fmt', '-diff', '-write=false', '-list=false']);
