@@ -27,10 +27,10 @@ function terraform(params) {
   const terraformVersion = core.getInput('terraform_version');
   const terraformDirectory = core.getInput('terraform_directory');
 
-  let tf_init = `✕`;
-  let tf_fmt = `✕`;
-  let tf_plan = `✕`;
-  let tf_apply = `✕`;
+  let tf_init = `\ufe63`;
+  let tf_fmt = `\ufe63`;
+  let tf_plan = `\ufe63`;
+  let tf_apply = `\ufe63`;
 
   core.startGroup('Setup Terraform');
   await tf_setup();
@@ -51,8 +51,9 @@ function terraform(params) {
   const tfi = terraform(['init']);
   if (tfi.status > 0) {
     core.info(`status: ${tfi.status}`);
+    tf_init = `\u2715`;
   } else {
-    tf_init = `✓`;
+    tf_init = `\u2713`;
   }
   core.info(tfi.stdout);
   core.info(tfi.stderr);
@@ -62,8 +63,9 @@ function terraform(params) {
   const tff = terraform(['fmt', '-diff', '-write=false', '-list=false']);
   if (tff.status > 0) {
     core.info(`status: ${tff.status}`);
+    tf_fmt = `\u2715`;
   } else {
-    tf_fmt = `✓`;
+    tf_fmt = `\u2713`;
   }
   core.info(tff.stdout);
   core.info(tff.stderr);
@@ -77,8 +79,9 @@ function terraform(params) {
   const tfp = terraform(['plan', '-out=terraform.plan']);
   if (tfp.status > 0) {
     core.info(`status: ${tfp.status}`);
+    tf_plan = `\u2715`;
   } else {
-    tf_plan = `✓`;
+    tf_plan = `\u2713`;
   }
   core.info(tfp.stdout);
   core.info(tfp.stderr);
