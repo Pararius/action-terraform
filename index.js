@@ -99,6 +99,8 @@ function terraform(params) {
     core.info(tfp.stdout);
     core.info('stderr:');
     core.info(tfp.stderr);
+  } else {
+    core.info('Skipped');
   }
   core.endGroup();
 
