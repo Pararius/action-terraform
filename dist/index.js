@@ -90,6 +90,7 @@ function terraform(params) {
     core.setFailed('Failed to run `terraform plan`!');
   }
 
+  core.info('');
   core.info(`Initialization: ${tf_init}`)
   core.info(`Coding style: ${tf_fmt}`)
   core.info(`Plan: ${tf_plan}`)
