@@ -66,11 +66,12 @@ function terraform(params) {
 
   core.startGroup('terraform fmt');
   const tffc = terraform(['fmt', '-check']);
+  core.info(`status: ${tffc.status}`);
   core.info('stdout:');
   core.info(tffc.stdout);
   core.info('stderr:');
   core.info(tffc.stderr);
-if (tffc.status > 0) {
+  if (tffc.status > 0) {
     core.info(`status: ${tfi.status}`);
     tf_fmt = `\u2715`;
   } else {
