@@ -8,8 +8,8 @@ module.exports =
 const core = __nccwpck_require__(4147);
 const github = __nccwpck_require__(7364);
 const io = __nccwpck_require__(977);
-const tf_setup = __nccwpck_require__(7591);
-const { spawnSync } = __nccwpck_require__( 3129 );
+const {tf_setup} = __nccwpck_require__(7591);
+const {spawnSync} = __nccwpck_require__(3129);
 
 function terraform(params) {
   const options = {
@@ -26,23 +26,27 @@ function terraform(params) {
 (async () => {
   const terraformVersion = core.getInput('terraform_version');
   const terraformDirectory = core.getInput('terraform_directory');
+
   core.startGroup('Setup Terraform');
   await tf_setup();
   core.info(`Terraform version: ${terraformVersion}`);
   core.info(`Working directory: ${terraformDirectory}`);
   core.endGroup();
+
   core.startGroup('terraform version');
   const tfv = terraform(['version']);
   core.info(`status: ${tfv.status}`);
   core.info(tfv.stdout);
   core.info(tfv.stderr);
   core.endGroup();
+
   core.startGroup('terraform init');
   const tfi = terraform(['init']);
   core.info(`status: ${tfi.status}`);
   core.info(tfi.stdout);
   core.info(tfi.stderr);
   core.endGroup();
+
   core.startGroup('terraform fmt');
   const tff = terraform(['fmt', '-diff', '-write=false', '-list=false']);
   core.info(`status: ${tff.status}`);
@@ -53,6 +57,7 @@ function terraform(params) {
   if (tffc.status > 0) {
     core.setFailed('Failed to pass `terraform fmt` checks!');
   }
+
   core.startGroup('terraform plan');
   const tfp = terraform(['plan', '-out=terraform.plan']);
   core.info(`status: ${tfp.status}`);
