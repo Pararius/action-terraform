@@ -35,21 +35,21 @@ function terraform(params) {
 
   core.startGroup('terraform version');
   const tfv = terraform(['version']);
-  core.info(`status: ${tfv.status}`);
+  tfv.status > 0 && core.info(`status: ${tfv.status}`);
   core.info(tfv.stdout);
   core.info(tfv.stderr);
   core.endGroup();
 
   core.startGroup('terraform init');
   const tfi = terraform(['init']);
-  core.info(`status: ${tfi.status}`);
+  tfi.status > 0 && core.info(`status: ${tfi.status}`);
   core.info(tfi.stdout);
   core.info(tfi.stderr);
   core.endGroup();
 
   core.startGroup('terraform fmt');
   const tff = terraform(['fmt', '-diff', '-write=false', '-list=false']);
-  core.info(`status: ${tff.status}`);
+  tff.status > 0 && core.info(`status: ${tff.status}`);
   core.info(tff.stdout);
   core.info(tff.stderr);
   core.endGroup();
@@ -60,7 +60,7 @@ function terraform(params) {
 
   core.startGroup('terraform plan');
   const tfp = terraform(['plan', '-out=terraform.plan']);
-  core.info(`status: ${tfp.status}`);
+  tfp.status > 0 && core.info(`status: ${tfp.status}`);
   core.info(tfp.stdout);
   core.info(tfp.stderr);
   core.endGroup();
