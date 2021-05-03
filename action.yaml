@@ -1,13 +1,17 @@
 name: Terraform
 description: Terraform all-in-one workflow
 inputs:
-  terraform_version:
-    required: true
-    description: Version of terraform to use
   terraform_directory:
     required: false
     description: Location of terraform manifests
     default: ./
+  terraform_do_apply:
+    required: false
+    description: Whether to run `terraform apply` as last step
+    default: false
+  terraform_version:
+    required: true
+    description: Version of terraform to use
 runs:
   using: node12
   main: dist/index.js
