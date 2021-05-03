@@ -96,9 +96,9 @@ function terraform(params) {
       tf_apply = `\u2713`;
     }
     core.info('stdout:');
-    core.info(tfp.stdout);
+    core.info(tfa.stdout);
     core.info('stderr:');
-    core.info(tfp.stderr);
+    core.info(tfa.stderr);
   } else {
     core.info('Skipped');
   }
