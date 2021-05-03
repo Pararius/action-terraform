@@ -35,8 +35,6 @@ function terraform(params) {
   const tfv = terraform(['version']);
   if (tfv.status > 0) {
     core.info(`status: ${tfv.status}`);
-  } else {
-    tf_init = `✓`;
   }
   core.info(tfv.stdout);
   core.info(tfv.stderr);
@@ -44,14 +42,22 @@ function terraform(params) {
 
   core.startGroup('terraform init');
   const tfi = terraform(['init']);
-  tfi.status > 0 && core.info(`status: ${tfi.status}`);
+  if (tfi.status > 0) {
+    core.info(`status: ${tfi.status}`);
+  } else {
+    tf_init = `✓`;
+  }
   core.info(tfi.stdout);
   core.info(tfi.stderr);
   core.endGroup();
 
   core.startGroup('terraform fmt');
   const tff = terraform(['fmt', '-diff', '-write=false', '-list=false']);
-  tff.status > 0 && core.info(`status: ${tff.status}`);
+  if (tff.status > 0) {
+    core.info(`status: ${tff.status}`);
+  } else {
+    tf_fmt = `✓`;
+  }
   core.info(tff.stdout);
   core.info(tff.stderr);
   core.endGroup();
@@ -62,7 +68,11 @@ function terraform(params) {
 
   core.startGroup('terraform plan');
   const tfp = terraform(['plan', '-out=terraform.plan']);
-  tfp.status > 0 && core.info(`status: ${tfp.status}`);
+  if (tfp.status > 0) {
+    core.info(`status: ${tfp.status}`);
+  } else {
+    tf_plan = `✓`;
+  }
   core.info(tfp.stdout);
   core.info(tfp.stderr);
   core.endGroup();
