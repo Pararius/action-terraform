@@ -39,6 +39,7 @@ function terraform(params) {
   const tfv = terraform(['version']);
   if (tfv.status > 0) {
     core.info(`status: ${tfv.status}`);
+  } else {
     tf_init = `\u2705`;
   }
   core.info(tfv.stdout);
