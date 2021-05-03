@@ -1,7 +1,7 @@
 const core = require('@actions/core');
 const github = require('@actions/github');
 const io = require('@actions/io');
-const {tf_setup} = require('setup-terraform/lib/setup-terraform');
+const tf_setup = require('setup-terraform/lib/setup-terraform');
 const {spawnSync} = require('child_process');
 
 function terraform(params) {
