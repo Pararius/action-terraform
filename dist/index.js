@@ -8,7 +8,7 @@ module.exports =
 const core = __nccwpck_require__(4147);
 const github = __nccwpck_require__(7364);
 const io = __nccwpck_require__(977);
-const {tf_setup} = __nccwpck_require__(7591);
+const tf_setup = __nccwpck_require__(7591);
 const {spawnSync} = __nccwpck_require__(3129);
 
 function terraform(params) {
