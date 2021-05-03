@@ -28,7 +28,12 @@ function terraform(params) {
 
   core.startGroup('terraform version');
   const tfv = terraform(['version']);
-  tfv.status > 0 && core.info(`status: ${tfv.status}`);
+  if (tfv.status > 0) {
+    core.info(`status: ${tfv.status}`);
+    const tf_init = `\u2705`;
+  } else {
+    const tf_init = `\u274c`;
+  }
   core.info(tfv.stdout);
   core.info(tfv.stderr);
   core.endGroup();
@@ -60,6 +65,8 @@ function terraform(params) {
   if (tfp.status > 0) {
     core.setFailed('Failed to run `terraform plan`!');
   }
+
+  core.info(`Initialization: ${tf_init}`)
 })().catch(error => {
   core.setFailed(error.message);
 });
