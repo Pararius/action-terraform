@@ -43,7 +43,9 @@ function terraform(params) {
   if (tfv.status > 0) {
     core.info(`status: ${tfv.status}`);
   }
+  core.info('stdout:');
   core.info(tfv.stdout);
+  core.info('stderr:');
   core.info(tfv.stderr);
   core.endGroup();
 
@@ -55,25 +57,26 @@ function terraform(params) {
   } else {
     tf_init = `\u2713`;
   }
+  core.info('stdout:');
   core.info(tfi.stdout);
+  core.info('stderr:');
   core.info(tfi.stderr);
   core.endGroup();
 
   core.startGroup('terraform fmt');
-  const tff = terraform(['fmt', '-diff', '-write=false', '-list=false']);
-  if (tff.status > 0) {
-    core.info(`status: ${tff.status}`);
-    tf_fmt = `\u2715`;
-  } else {
-    tf_fmt = `\u2713`;
-  }
-  core.info(tff.stdout);
-  core.info(tff.stderr);
-  core.endGroup();
   const tffc = terraform(['fmt', '-check']);
   if (tffc.status > 0) {
-    core.setFailed('Failed to pass `terraform fmt` checks!');
+    core.info(`status: ${tfi.status}`);
+    tf_fmt = `\u2715`;
+  } else {
+    const tff = terraform(['fmt', '-diff', '-write=false', '-list=false']);
+    core.info('stdout:');
+    core.info(tff.stdout);
+    core.info('stderr:');
+    core.info(tff.stderr);
+    tf_fmt = `\u2713`;
   }
+  core.endGroup();
 
   core.startGroup('terraform plan');
   const tfp = terraform(['plan', '-out=terraform.plan']);
@@ -83,12 +86,11 @@ function terraform(params) {
   } else {
     tf_plan = `\u2713`;
   }
+  core.info('stdout:');
   core.info(tfp.stdout);
+  core.info('stderr:');
   core.info(tfp.stderr);
   core.endGroup();
-  if (tfp.status > 0) {
-    core.setFailed('Failed to run `terraform plan`!');
-  }
 
   core.info('');
   core.info(`Initialization: ${tf_init}`)
