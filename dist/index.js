@@ -15,7 +15,7 @@ function terraform(params) {
   const options = {
     cwd: core.getInput('terraform_directory')
   }
-  const tf = spawnSync('/bin/sh', ['-c', `"terraform ${params.join(' ')} 2>&1`], options);
+  const tf = spawnSync('/bin/sh', ['-c', `"terraform ${params.join(' ')} 2>&1"`], options);
   return {
     stdout: tf.stdout.toString(),
     stderr: tf.stderr.toString(),
