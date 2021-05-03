@@ -44,10 +44,7 @@ function terraform(params) {
   if (tfv.status > 0) {
     core.info(`status: ${tfv.status}`);
   }
-  core.info('stdout:');
   core.info(tfv.stdout);
-  core.info('stderr:');
-  core.info(tfv.stderr);
   core.endGroup();
 
   core.startGroup('terraform init');
@@ -58,10 +55,7 @@ function terraform(params) {
   } else {
     tf_init = `\u2713`;
   }
-  core.info('stdout:');
   core.info(tfi.stdout);
-  core.info('stderr:');
-  core.info(tfi.stderr);
   core.endGroup();
 
   core.startGroup('terraform fmt');
@@ -70,10 +64,7 @@ function terraform(params) {
     core.info(`status: ${tffc.status}`);
     tf_fmt = `\u2715`;
     const tff = terraform('fmt -diff -write=false -list=false');
-    core.info('stdout:');
     core.info(tff.stdout);
-    core.info('stderr:');
-    core.info(tff.stderr);
   } else {
     tf_fmt = `\u2713`;
   }
@@ -87,10 +78,7 @@ function terraform(params) {
   } else {
     tf_plan = `\u2713`;
   }
-  core.info('stdout:');
   core.info(tfp.stdout);
-  core.info('stderr:');
-  core.info(tfp.stderr);
   core.endGroup();
 
   core.startGroup('terraform apply');
@@ -102,10 +90,7 @@ function terraform(params) {
     } else {
       tf_apply = `\u2713`;
     }
-    core.info('stdout:');
     core.info(tfa.stdout);
-    core.info('stderr:');
-    core.info(tfa.stderr);
   } else {
     core.info('Skipped');
   }
@@ -113,7 +98,7 @@ function terraform(params) {
 
   core.info('');
   core.info(`Initialization: ${tf_init}`)
-  core.info(`Coding style: ${tf_fmt}`)
+  core.info(`Formatting: ${tf_fmt}`)
   core.info(`Plan: ${tf_plan}`)
   core.info(`Apply: ${tf_apply}`)
 })().catch(error => {
