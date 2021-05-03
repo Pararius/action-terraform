@@ -8,7 +8,7 @@ function terraform(params) {
   const options = {
     cwd: core.getInput('terraform_directory')
   }
-  const tf = spawnSync('/bin/sh', ['-xc', `terraform ${params.join(' ')} 2>&1`], options);
+  const tf = spawnSync('/bin/sh', ['-xc', `terraform ${params} 2>&1`], options);
   return {
     stdout: tf.stdout.toString(),
     stderr: tf.stderr.toString(),
@@ -33,7 +33,7 @@ function terraform(params) {
   core.endGroup();
 
   core.startGroup('terraform version');
-  const tfv = terraform(['version']);
+  const tfv = terraform('version');
   if (tfv.status > 0) {
     core.info(`status: ${tfv.status}`);
   }
@@ -44,7 +44,7 @@ function terraform(params) {
   core.endGroup();
 
   core.startGroup('terraform init');
-  const tfi = terraform(['init']);
+  const tfi = terraform('init');
   if (tfi.status > 0) {
     core.info(`status: ${tfi.status}`);
     tf_init = `\u2715`;
@@ -58,11 +58,11 @@ function terraform(params) {
   core.endGroup();
 
   core.startGroup('terraform fmt');
-  const tffc = terraform(['fmt', '-check']);
+  const tffc = terraform('fmt -check');
   if (tffc.status > 0) {
     core.info(`status: ${tffc.status}`);
     tf_fmt = `\u2715`;
-    const tff = terraform(['fmt', '-diff', '-write=false', '-list=false']);
+    const tff = terraform('fmt -diff -write=false -list=false');
     core.info('stdout:');
     core.info(tff.stdout);
     core.info('stderr:');
@@ -73,7 +73,7 @@ function terraform(params) {
   core.endGroup();
 
   core.startGroup('terraform plan');
-  const tfp = terraform(['plan', '-out=terraform.plan']);
+  const tfp = terraform('plan -out=terraform.plan');
   if (tfp.status > 0) {
     core.info(`status: ${tfp.status}`);
     tf_plan = `\u2715`;
@@ -88,7 +88,7 @@ function terraform(params) {
 
   core.startGroup('terraform apply');
   if (terraformDoApply === 'true') {
-    const tfa = terraform(['apply', '-auto-approve', 'terraform.plan']);
+    const tfa = terraform('apply -auto-approve terraform.plan');
     if (tfa.status > 0) {
       core.info(`status: ${tfa.status}`);
       tf_apply = `\u2715`;
