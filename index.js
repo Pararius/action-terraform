@@ -19,6 +19,7 @@ function terraform(params) {
 (async () => {
   const terraformVersion = core.getInput('terraform_version');
   const terraformDirectory = core.getInput('terraform_directory');
+  const terraformDoApply = core.getInput('terraform_do_apply');
 
   let tf_init = `\ufe63`;
   let tf_fmt = `\ufe63`;
@@ -83,6 +84,22 @@ function terraform(params) {
   core.info(tfp.stdout);
   core.info('stderr:');
   core.info(tfp.stderr);
+  core.endGroup();
+
+  core.startGroup('terraform apply');
+  if (terraformDoApply === 'true') {
+    const tfa = terraform(['apply', '-auto-approve', 'terraform.plan']);
+    if (tfa.status > 0) {
+      core.info(`status: ${tfa.status}`);
+      tf_apply = `\u2715`;
+    } else {
+      tf_apply = `\u2713`;
+    }
+    core.info('stdout:');
+    core.info(tfp.stdout);
+    core.info('stderr:');
+    core.info(tfp.stderr);
+  }
   core.endGroup();
 
   core.info('');
