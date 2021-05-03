@@ -27,6 +27,8 @@ function terraform(params) {
   const terraformVersion = core.getInput('terraform_version');
   const terraformDirectory = core.getInput('terraform_directory');
 
+  let tf_init = `\u274c`;
+
   core.startGroup('Setup Terraform');
   await tf_setup();
   core.info(`Terraform version: ${terraformVersion}`);
@@ -37,9 +39,7 @@ function terraform(params) {
   const tfv = terraform(['version']);
   if (tfv.status > 0) {
     core.info(`status: ${tfv.status}`);
-    const tf_init = `\u2705`;
-  } else {
-    const tf_init = `\u274c`;
+    tf_init = `\u2705`;
   }
   core.info(tfv.stdout);
   core.info(tfv.stderr);
