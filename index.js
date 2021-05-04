@@ -36,6 +36,7 @@ function terraform(params) {
   core.info(`tfsInstall: ${tfsInstall.stdout}`);
   core.info(`tfsInstall: ${tfsInstall.stderr}`);
   const tfs = spawnSync(`${process.env['HOME']}/tfswitch`, ['-b', `${process.env['HOME']}/`]);
+  core.info(`tfs: ${tfs.status}`);
   core.info(`tfs: ${tfs.stdout}`);
   core.info(`tfs: ${tfs.stderr}`);
   core.info(`Terraform version: ${terraformVersion}`);
