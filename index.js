@@ -9,7 +9,7 @@ function terraform(params) {
   const options = {
     cwd: core.getInput('terraform_directory')
   }
-  const tf = spawnSync('/bin/sh', ['-xc', `${process.env['HOME']}/.bin/terraform ${params} 2>&1`], options);
+  const tf = spawnSync('/bin/sh', ['-xc', `${process.env['HOME']}/terraform ${params} 2>&1`], options);
   return {
     stdout: tf.stdout.toString(),
     stderr: tf.stderr.toString(),
@@ -32,10 +32,10 @@ function terraform(params) {
   // await tf_setup();
   const tfsPath = await tc.downloadTool('https://raw.githubusercontent.com/warrensbox/terraform-switcher/release/install.sh');
   core.info(`tfsPath: ${tfsPath}`);
-  const tfsInstall = spawnSync('/bin/bash', ['-xc', `${tfsPath} -b ${process.env['HOME']}/.bin/ 2>&1`]);
+  const tfsInstall = spawnSync('/bin/bash', ['-xc', `${tfsPath} -b ${process.env['HOME']}/ 2>&1`]);
   core.info(`tfsInstall: ${tfsInstall.stdout}`);
   core.info(`tfsInstall: ${tfsInstall.stderr}`);
-  const tfs = spawnSync(`${process.env['HOME']}/.bin/tfswitch`, ['-b', `${process.env['HOME']}/.bin/`]);
+  const tfs = spawnSync(`${process.env['HOME']}/.bin/tfswitch`, ['-b', `${process.env['HOME']}/`]);
   core.info(`tfs: ${tfs.stdout}`);
   core.info(`Terraform version: ${terraformVersion}`);
   core.info(`Working directory: ${terraformDirectory}`);
