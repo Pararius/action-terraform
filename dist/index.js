@@ -13,7 +13,7 @@ const tc = __nccwpck_require__(5792);
 const {spawnSync} = __nccwpck_require__(3129);
 
 function shell(command, options) {
-  const sh = spawnSync('bin/sh', ['-c', `${command} 2>&1`], options);
+  const sh = spawnSync('/bin/sh', ['-c', `${command} 2>&1`], options);
   return {
     status: sh.status,
     stderr: sh.stderr,

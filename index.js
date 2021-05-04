@@ -6,7 +6,7 @@ const tc = require('@actions/tool-cache');
 const {spawnSync} = require('child_process');
 
 function shell(command, options) {
-  const sh = spawnSync('bin/sh', ['-c', `${command} 2>&1`], options);
+  const sh = spawnSync('/bin/sh', ['-c', `${command} 2>&1`], options);
   return {
     status: sh.status,
     stderr: sh.stderr,
