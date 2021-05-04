@@ -7,6 +7,9 @@ const {spawnSync} = require('child_process');
 
 function shell(command, options) {
   const sh = spawnSync('/bin/sh', ['-c', `${command} 2>&1`], options);
+  core.warning(`sh.status: ${sh.status}`);
+  core.warning(`sh.stderr: ${sh.stderr}`);
+  core.warning(`sh.stdout: ${sh.stdout}`);
   return {
     status: sh.status,
     stderr: sh.stderr,
