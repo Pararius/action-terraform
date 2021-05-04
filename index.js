@@ -34,7 +34,7 @@ function terraform(params) {
   core.info(`tfsPath: ${tfsPath}`);
   const tfsInstall = spawnSync('/bin/sh', [`${tfsPath} -b ${process.env['HOME']}/.bin/ 2>&1`]);
   const tfsCat = spawnSync('cat', [tfsPath]);
-  core.info(`tfsCat: ${tfsCat}`);
+  core.info(`tfsCat: ${tfsCat.stdout}`);
   core.info(`tfsInstall: ${tfsInstall.stdout}`);
   const tfs = spawnSync(`${process.env['HOME']}/.bin/tfswitch`, ['-b', `${process.env['HOME']}/.bin/`]);
   core.info(`tfs: ${tfs.stdout}`);
