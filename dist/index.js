@@ -12,15 +12,26 @@ const tc = __nccwpck_require__(5792);
 // const tf_setup = require('setup-terraform/lib/setup-terraform');
 const {spawnSync} = __nccwpck_require__(3129);
 
+function shell(command, options) {
+  const sh = spawnSync('bin/sh', ['-c', `${command} 2>&1`], options);
+  return {
+    status: sh.status,
+    stderr: sh.stderr,
+    stdout: sh.stdout
+  }
+}
+
 function terraform(params) {
   const options = {
     cwd: core.getInput('terraform_directory')
   }
-  const tf = spawnSync('/bin/sh', ['-xc', `${process.env['HOME']}/terraform ${params} 2>&1`], options);
+  const tf = shell(`${process.env['HOME']}/terraform ${params}`, {
+    cwd: core.getInput('terraform_directory')
+  });
   return {
-    stdout: tf.stdout.toString(),
-    stderr: tf.stderr.toString(),
-    status: tf.status
+    status: tf.status,
+    stderr: tf.stderr,
+    stdout: tf.stdout
   }
 }
 
@@ -37,10 +48,13 @@ function terraform(params) {
   core.startGroup('Setup Terraform');
   core.info(`Working directory: ${terraformDirectory}`);
   const tfsPath = await tc.downloadTool('https://raw.githubusercontent.com/warrensbox/terraform-switcher/release/install.sh');
-  const tfsInstall = spawnSync('/bin/sh', ['-c', `chmod +x ${tfsPath} && ${tfsPath} -b ${process.env['HOME']}/ 2>&1`]);
+  const tfsInstall = shell(`chmod +x ${tfsPath} && ${tfsPath} -b ${process.env['HOME']}/`);
   core.info('Installing tfswitch:');
   core.info(tfsInstall.stdout);
-  const tfs = spawnSync('/bin/sh', ['-c', `${process.env['HOME']}/tfswitch -b ${process.env['HOME']}/terraform 2>&1`], {cwd: terraformDirectory});
+  core.info(tfsInstall.stderr);
+  const tfs = shell(`${process.env['HOME']}/tfswitch -b ${process.env['HOME']}/terraform`, {
+    cwd: terraformDirectory
+  });
   core.info('Running tfswitch:');
   core.info(tfs.stdout);
   core.endGroup();
