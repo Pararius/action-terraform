@@ -25,7 +25,6 @@ function terraform(params) {
 }
 
 (async () => {
-  const terraformVersion = core.getInput('terraform_version');
   const terraformDirectory = core.getInput('terraform_directory');
   const terraformDoApply = core.getInput('terraform_do_apply');
 
@@ -46,7 +45,6 @@ function terraform(params) {
   core.info(`tfs: ${tfs.status}`);
   core.info(`tfs: ${tfs.stdout}`);
   core.info(`tfs: ${tfs.stderr}`);
-  core.info(`Terraform version: ${terraformVersion}`);
   core.info(`Working directory: ${terraformDirectory}`);
   core.endGroup();
 
