@@ -45,7 +45,7 @@ function terraform(params) {
   if (tfv.status > 0) {
     core.info(`status: ${tfv.status}`);
   } else {
-    tf_version = tfv.stdout.replace(/\r?\n|\r/g, "");
+    tf_version = tfv.stdout.replace(/\r?\n|\r/g, ' ');
   }
   core.info(tfv.stdout);
   core.endGroup();
