@@ -9,7 +9,7 @@ function shell(command, options) {
   const sh = spawnSync('/bin/sh', ['-c', `${command} 2>&1`], {
     ...{env: {
       ...process.env,
-      ...{'GOOGLE_APPLICATION_CREDENTIALS': `${process.env['HOME']}gcloud.json`}
+      ...{'GOOGLE_APPLICATION_CREDENTIALS': `${process.env['HOME']}/gcloud.json`}
     },
     ...options
   }});
