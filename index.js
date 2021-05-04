@@ -1,6 +1,6 @@
 const core = require('@actions/core');
-const github = require('@actions/github');
-const io = require('@actions/io');
+// const github = require('@actions/github');
+// const io = require('@actions/io');
 const tc = require('@actions/tool-cache');
 const {spawnSync} = require('child_process');
 const { exit } = require('process');
