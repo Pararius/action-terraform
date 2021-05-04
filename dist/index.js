@@ -19,8 +19,8 @@ function shell(command, options) {
   core.warning(`sh.stdout: ${sh.stdout}`);
   return {
     status: sh.status,
-    stderr: sh.stderr,
-    stdout: sh.stdout
+    stderr: sh.stderr.toString(),
+    stdout: sh.stdout.toString()
   }
 }
 
