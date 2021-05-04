@@ -30,7 +30,7 @@ function terraform(params) {
   core.startGroup('Setup Terraform');
   core.info(`Working directory: ${terraformDirectory}`);
   const tfsPath = await tc.downloadTool('https://raw.githubusercontent.com/warrensbox/terraform-switcher/release/install.sh');
-  const tfsInstall = spawnSync('/bin/sh', ['-c', `. ${tfsPath} -b ${process.env['HOME']}/ 2>&1`]);
+  const tfsInstall = spawnSync('/bin/sh', ['-c', `chmod +x ${tfsPath} && ./${tfsPath} -b ${process.env['HOME']}/ 2>&1`]);
   core.info('Installing tfswitch:');
   core.info(tfsInstall.stdout);
   const tfs = spawnSync('/bin/sh', ['-c', `${process.env['HOME']}/tfswitch -b ${process.env['HOME']}/terraform 2>&1`], {cwd: terraformDirectory});
