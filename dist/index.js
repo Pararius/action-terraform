@@ -10,6 +10,7 @@ const github = __nccwpck_require__(7364);
 const io = __nccwpck_require__(977);
 const tc = __nccwpck_require__(5792);
 const {spawnSync} = __nccwpck_require__(3129);
+const { exit } = __nccwpck_require__(1765);
 
 function shell(command, options) {
   const sh = spawnSync('/bin/sh', ['-c', `${command} 2>&1`], options);
@@ -56,19 +57,22 @@ function terraform(params) {
   }*/);
   core.info('Running tfswitch:');
   core.info(tfs.stdout);
+  core.info(tfs.stderr);
+  core.endGroup();
   if (tfs.status > 0) {
     core.setFailed('Error switching to proper terraform version');
+    process.exit(1);
   }
-  core.endGroup();
 
   core.startGroup('terraform version');
   const tfv = terraform('version');
+  core.info(tfv.stdout);
+  core.info(tfv.stderr);
   if (tfv.status > 0) {
     core.info(`status: ${tfv.status}`);
   } else {
     tf_version = tfv.stdout.replace(/\r?\n|\r/g, ' ').match(/ v([0-9]+\.[0-9]+\.[0-9]+) /)[1];
   }
-  core.info(tfv.stdout);
   core.endGroup();
 
   core.startGroup('terraform init');
@@ -9784,6 +9788,14 @@ module.exports = require("os");;
 
 "use strict";
 module.exports = require("path");;
+
+/***/ }),
+
+/***/ 1765:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("process");;
 
 /***/ }),
 
