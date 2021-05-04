@@ -42,7 +42,7 @@ function terraform(params) {
   const tfsInstall = spawnSync('/bin/bash', [tfsPath, '-b', `${process.env['HOME']}/`]);
   core.info(`tfsInstall: ${tfsInstall.stdout}`);
   core.info(`tfsInstall: ${tfsInstall.stderr}`);
-  const tfs = spawnSync(`${process.env['HOME']}/tfswitch`, ['-b', `${process.env['HOME']}/`]);
+  const tfs = spawnSync(`${process.env['HOME']}/tfswitch`, ['-b', `${process.env['HOME']}/`], {cwd: terraformDirectory});
   core.info(`tfs: ${tfs.status}`);
   core.info(`tfs: ${tfs.stdout}`);
   core.info(`tfs: ${tfs.stderr}`);
