@@ -9,7 +9,6 @@ const core = __nccwpck_require__(4147);
 const github = __nccwpck_require__(7364);
 const io = __nccwpck_require__(977);
 const tc = __nccwpck_require__(5792);
-// const tf_setup = require('setup-terraform/lib/setup-terraform');
 const {spawnSync} = __nccwpck_require__(3129);
 
 function shell(command, options) {
@@ -25,9 +24,6 @@ function shell(command, options) {
 }
 
 function terraform(params) {
-  const options = {
-    cwd: core.getInput('terraform_directory')
-  }
   const tf = shell(`${process.env['HOME']}/terraform ${params}`, {
     cwd: core.getInput('terraform_directory')
   });
@@ -55,11 +51,14 @@ function terraform(params) {
   core.info('Installing tfswitch:');
   core.info(tfsInstall.stdout);
   core.info(tfsInstall.stderr);
-  const tfs = shell(`${process.env['HOME']}/tfswitch -b ${process.env['HOME']}/terraform`, {
+  const tfs = shell(`${process.env['HOME']}/tfswitch -b ${process.env['HOME']}/terraform`/*, {
     cwd: terraformDirectory
-  });
+  }*/);
   core.info('Running tfswitch:');
   core.info(tfs.stdout);
+  if (tfs.status > 0) {
+    core.setFailed('Error switching to proper terraform version');
+  }
   core.endGroup();
 
   core.startGroup('terraform version');
