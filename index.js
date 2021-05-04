@@ -30,7 +30,7 @@ function terraform(params) {
 
 (async () => {
   const terraformDirectory = core.getInput('terraform_directory');
-  const terraformDoApply = core.getInput('terraform_do_apply');
+  let terraformDoApply = core.getInput('terraform_do_apply');
 
   let tf_version = '<unknown>';
   let tf_init = `\ufe63`;
@@ -65,6 +65,7 @@ function terraform(params) {
   if (tfv.status > 0) {
     core.info(`status: ${tfv.status}`);
     core.setFailed(`Failed to determine terraform version [err:${tfv.status}]`);
+    terraformDoApply = 'false';
   } else {
     tf_version = tfv.stdout.replace(/\r?\n|\r/g, ' ').match(/ v([0-9]+\.[0-9]+\.[0-9]+) /)[1];
   }
@@ -76,6 +77,7 @@ function terraform(params) {
   if (tfi.status > 0) {
     tf_init = `\u2715`;
     core.setFailed(`Failed to initialize terraform [err:${tfi.status}]`);
+    terraformDoApply = 'false';
   } else {
     tf_init = `\u2713`;
   }
@@ -90,6 +92,7 @@ function terraform(params) {
   if (tffc.status > 0) {
     tf_fmt = `\u2715`;
     core.setFailed(`Failed to pass terraform formatting checks [err:${tffc.status}]`);
+    terraformDoApply = 'false';
   } else {
     tf_fmt = `\u2713`;
   }
@@ -101,6 +104,7 @@ function terraform(params) {
   if (tfp.status > 0) {
     tf_plan = `\u2715`;
     core.setFailed(`Failed to prepare the terraform plan [err:${tfp.status}]`);
+    terraformDoApply = 'false';
   } else {
     tf_plan = `\u2713`;
   }
