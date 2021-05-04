@@ -2,6 +2,9 @@
 name: Terraform
 description: Terraform all-in-one workflow
 inputs:
+  google-credentials:
+    required: false
+    description: Google credentials
   terraform_directory:
     required: false
     description: Location of terraform manifests

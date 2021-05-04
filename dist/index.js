@@ -50,7 +50,7 @@ function terraform(params) {
   let tf_apply = `\ufe63`;
 
   core.startGroup('Setup Google Cloud');
-  shell(`echo "${core.getInput('google-credentials')}" > $GOOGLE_APPLICATION_CREDENTIALS`);
+  shell(`echo "${core.getInput('google_credentials')}" > $GOOGLE_APPLICATION_CREDENTIALS`);
   core.endGroup();
 
   core.startGroup('Setup Terraform');
