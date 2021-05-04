@@ -52,15 +52,15 @@ function terraform(params) {
   core.info('Installing tfswitch:');
   core.info(tfsInstall.stdout);
   core.info(tfsInstall.stderr);
-  const tfs = shell(`${process.env['HOME']}/tfswitch -b ${process.env['HOME']}/terraform`/*, {
+  const tfs = shell(`${process.env['HOME']}/tfswith -b ${process.env['HOME']}/terraform`, {
     cwd: terraformDirectory
-  }*/);
+  });
   core.info('Running tfswitch:');
   core.info(tfs.stdout);
   core.info(tfs.stderr);
   core.endGroup();
   if (tfs.status > 0) {
-    core.setFailed('Error switching to proper terraform version');
+    core.setFailed('Failed to determine which terraform version to use');
     process.exit(1);
   }
 
