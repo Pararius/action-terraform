@@ -6,7 +6,11 @@ const {spawnSync} = require('child_process');
 const { exit } = require('process');
 
 function shell(command, options) {
-  const sh = spawnSync('/bin/sh', ['-c', `${command} 2>&1`], options);
+  const sh = spawnSync('/bin/sh', ['-c', `${command} 2>&1`], {
+    ...process.env,
+    ...{env: {'GOOGLE_APPLICATION_CREDENTIALS': `${process.env['HOME']}gcloud.json`}},
+    ...options
+  });
   // core.warning(`sh.status: ${sh.status}`);
   // core.warning(`sh.stderr: ${sh.stderr}`);
   // core.warning(`sh.stdout: ${sh.stdout}`);
@@ -37,6 +41,10 @@ function terraform(params) {
   let tf_fmt = `\ufe63`;
   let tf_plan = `\ufe63`;
   let tf_apply = `\ufe63`;
+
+  core.startGroup('Setup Google Cloud');
+  shell(`echo "${core.getInput('google-credentials')}" > $GOOGLE_APPLICATION_CREDENTIALS`);
+  core.endGroup();
 
   core.startGroup('Setup Terraform');
   core.info(`Working directory: ${terraformDirectory}`);
