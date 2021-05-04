@@ -7,10 +7,12 @@ const { exit } = require('process');
 
 function shell(command, options) {
   const sh = spawnSync('/bin/sh', ['-c', `${command} 2>&1`], {
-    ...process.env,
-    ...{env: {'GOOGLE_APPLICATION_CREDENTIALS': `${process.env['HOME']}gcloud.json`}},
+    ...{env: {
+      ...process.env,
+      ...{'GOOGLE_APPLICATION_CREDENTIALS': `${process.env['HOME']}gcloud.json`}
+    },
     ...options
-  });
+  }});
   // core.warning(`sh.status: ${sh.status}`);
   // core.warning(`sh.stderr: ${sh.stderr}`);
   // core.warning(`sh.stdout: ${sh.stdout}`);
