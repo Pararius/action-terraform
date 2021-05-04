@@ -52,7 +52,7 @@ function terraform(params) {
   core.info('Installing tfswitch:');
   core.info(tfsInstall.stdout);
   core.info(tfsInstall.stderr);
-  const tfs = shell(`${process.env['HOME']}/tfswith -b ${process.env['HOME']}/terraform`, {
+  const tfs = shell(`${process.env['HOME']}/tfswitch -b ${process.env['HOME']}/terraform`, {
     cwd: terraformDirectory
   });
   core.info('Running tfswitch:');
