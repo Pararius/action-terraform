@@ -28,6 +28,7 @@ function terraform(params) {
   const terraformDirectory = core.getInput('terraform_directory');
   const terraformDoApply = core.getInput('terraform_do_apply');
 
+  let tf_version = '<unknown>';
   let tf_init = `\ufe63`;
   let tf_fmt = `\ufe63`;
   let tf_plan = `\ufe63`;
@@ -43,6 +44,8 @@ function terraform(params) {
   const tfv = terraform('version');
   if (tfv.status > 0) {
     core.info(`status: ${tfv.status}`);
+  } else {
+    tf_version = tfv.stdout.replace(/\r?\n|\r/g, "");
   }
   core.info(tfv.stdout);
   core.endGroup();
@@ -97,6 +100,7 @@ function terraform(params) {
   core.endGroup();
 
   core.info('');
+  core.info(`Version: ${tf_version}`);
   core.info(`Initialization: ${tf_init}`)
   core.info(`Formatting: ${tf_fmt}`)
   core.info(`Plan: ${tf_plan}`)
