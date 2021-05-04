@@ -2,7 +2,7 @@
 name: Terraform
 description: Terraform all-in-one workflow
 inputs:
-  google-credentials:
+  google_credentials:
     required: false
     description: Google credentials
   terraform_directory:
