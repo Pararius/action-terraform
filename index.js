@@ -1,14 +1,15 @@
 const core = require('@actions/core');
 const github = require('@actions/github');
 const io = require('@actions/io');
-const tf_setup = require('setup-terraform/lib/setup-terraform');
+const tc = require('@actions/tool-cache');
+// const tf_setup = require('setup-terraform/lib/setup-terraform');
 const {spawnSync} = require('child_process');
 
 function terraform(params) {
   const options = {
     cwd: core.getInput('terraform_directory')
   }
-  const tf = spawnSync('/bin/sh', ['-xc', `terraform ${params} 2>&1`], options);
+  const tf = spawnSync('/bin/sh', ['-xc', `${process.env['HOME']}/.bin/terraform ${params} 2>&1`], options);
   return {
     stdout: tf.stdout.toString(),
     stderr: tf.stderr.toString(),
@@ -28,7 +29,10 @@ function terraform(params) {
   let tf_apply = `\ufe63`;
 
   core.startGroup('Setup Terraform');
-  await tf_setup();
+  // await tf_setup();
+  const tfsPath = await tc.downloadTool('https://raw.githubusercontent.com/warrensbox/terraform-switcher/release/install.sh');
+  const tfsInstall = spawnSync('/bin/sh', [`${tfsPath} -b ${process.env['HOME']}/.bin/`]);
+  const tfs = spawnSync(`${process.env['HOME']}/.bin/tfswitch`, ['-b', `${process.env['HOME']}/.bin/`]);
   core.info(`Terraform version: ${terraformVersion}`);
   core.info(`Working directory: ${terraformDirectory}`);
   core.endGroup();
