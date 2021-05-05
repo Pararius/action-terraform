@@ -1,6 +1,8 @@
 const core = require('@actions/core');
+const github = require('@actions/github');
 const tc = require('@actions/tool-cache');
 const {spawnSync} = require('child_process');
+const { Cipher } = require('crypto');
 const { exit } = require('process');
 
 function shell(command, options) {
@@ -43,7 +45,7 @@ function terraform(params) {
   shell(`printf '%s' '${core.getInput('google_credentials')}' > $GOOGLE_APPLICATION_CREDENTIALS`);
   core.endGroup();
 
-  core.startGroup('Setup Terraform');
+  core.startGroup('Setup Terraform CLI');
   core.info(`Working directory: ${terraformDirectory}`);
   const tfsPath = await tc.downloadTool('https://raw.githubusercontent.com/warrensbox/terraform-switcher/release/install.sh');
   const tfsInstall = shell(`chmod +x ${tfsPath} && ${tfsPath} -b ${process.env['HOME']}/`);
@@ -127,6 +129,7 @@ function terraform(params) {
     }
   } else {
     core.info('Skipped');
+    core.warning(`Fake: failed to apply terraform plan. See: ${process.env['GITHUB_SERVER_URL']}/${process.env['GITHUB_REPOSITORY']}/runs/${process.env['GITHUB_RUN_ID']}`);
     core.endGroup();
   }
 
