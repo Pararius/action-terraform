@@ -135,7 +135,11 @@ function terraform(params) {
     core.info(`curl -s -X POST --data-urlencode "payload={\\\"channel\\\":\\\"#terraform\\\", \\\"username\\\":\\\"terraform\\\", \\\"text\\\":\\\"Failed to apply terraform plan in ${process.env['GITHUB_REPOSITORY']}. See: <${core.getInput('github_pr_url')}|${core.getInput('github_pr_title')}>  (<${core.getInput('github_run_url')}|Logs>).\\\"}" ${core.getInput('slack_url')}`);
     core.endGroup();
   }
-  core.info(shell(`curl -H "Accept: application/vnd.github.v3+json" -H "Authorization: token ${core.getInput('github_token')}" ${process.env['GITHUB_API_URL']}/repos/${process.env['GITHUB_REPOSITORY']}/actions/runs/${process.env['GITHUB_RUN_ID']}/jobs`).stdout);
+  const jobsRaw = shell(`curl -H "Accept: application/vnd.github.v3+json" -H "Authorization: token ${core.getInput('github_token')}" ${process.env['GITHUB_API_URL']}/repos/${process.env['GITHUB_REPOSITORY']}/actions/runs/${process.env['GITHUB_RUN_ID']}/jobs`).stdout;
+  const jobs = JSON.parse(jobsRaw).jobs;
+  for (job in jobs) {
+    core.info(`job: ${job.name}`);
+  }
   core.info('');
   core.info(`Version: ${tf_version}`);
   core.info(`Initialization: ${tf_init}`)
