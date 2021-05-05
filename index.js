@@ -141,7 +141,7 @@ function terraform(params) {
   core.info(jobs['total_count']);
   for (job in jobs['jobs']) {
     core.info(job);
-    core.info(`job: ${jobs[job]['name']}`);
+    core.info(`job: ${jobs['jobs'][job]['name']}`);
   }
   core.info('');
   core.info(`Version: ${tf_version}`);
