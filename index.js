@@ -136,11 +136,11 @@ function terraform(params) {
     core.endGroup();
   }
   const jobsRaw = shell(`curl -s -H "Accept: application/vnd.github.v3+json" -H "Authorization: token ${core.getInput('github_token')}" ${process.env['GITHUB_API_URL']}/repos/${process.env['GITHUB_REPOSITORY']}/actions/runs/${process.env['GITHUB_RUN_ID']}/jobs`).stdout;
-  core.info(jobsRaw);
+  // core.info(jobsRaw);
   const jobs = JSON.parse(jobsRaw);
   core.info(jobs['total_count']);
   for (job in jobs['jobs']) {
-    core.info(`job: ${job.name}`);
+    core.info(`job: ${job['name']}`);
   }
   core.info('');
   core.info(`Version: ${tf_version}`);
