@@ -46,7 +46,7 @@ function terraform(params) {
   let tf_plan = `\ufe63`;
   let tf_apply = `\ufe63`;
 
-  core.startGroup('Setup Google Cloud credentials');
+  core.startGroup('Configure Google Cloud credentials');
   shell(`printf '%s' '${core.getInput('google_credentials')}' > $GOOGLE_APPLICATION_CREDENTIALS`);
   core.endGroup();
 
@@ -69,7 +69,7 @@ function terraform(params) {
     process.exit(1);
   }
 
-  core.startGroup('terraform version');
+  core.startGroup('Run terraform version');
   const tfv = terraform('version');
   core.info(tfv.stdout);
   core.info(tfv.stderr);
@@ -82,7 +82,7 @@ function terraform(params) {
     tf_version = tfv.stdout.replace(/\r?\n|\r/g, ' ').match(/ v([0-9]+\.[0-9]+\.[0-9]+) /)[1];
   }
 
-  core.startGroup('terraform init');
+  core.startGroup('Run terraform init');
   const tfi = terraform('init');
   core.info(tfi.stdout);
   core.endGroup();
@@ -94,7 +94,7 @@ function terraform(params) {
     tf_init = `\u2713`;
   }
 
-  core.startGroup('terraform fmt');
+  core.startGroup('Run terraform fmt');
   const tffc = terraform('fmt -check');
   if (tffc.status > 0) {
     const tff = terraform('fmt -diff -write=false -list=false');
@@ -109,7 +109,7 @@ function terraform(params) {
     tf_fmt = `\u2713`;
   }
 
-  core.startGroup('terraform plan');
+  core.startGroup('Run terraform plan');
   const tfp = terraform('plan -out=terraform.plan');
   core.info(tfp.stdout);
   core.endGroup();
@@ -121,7 +121,7 @@ function terraform(params) {
     tf_plan = `\u2713`;
   }
 
-  core.startGroup('terraform apply');
+  core.startGroup('Run terraform apply');
   if (terraformDoApply === 'true') {
     const tfa = terraform('apply -auto-approve terraform.plan');
     core.info(tfa.stdout);
