@@ -6,8 +6,6 @@ module.exports =
 /***/ ((__unused_webpack_module, __unused_webpack_exports, __nccwpck_require__) => {
 
 const core = __nccwpck_require__(398);
-// const github = require('@actions/github');
-// const io = require('@actions/io');
 const tc = __nccwpck_require__(220);
 const {spawnSync} = __nccwpck_require__(129);
 const { exit } = __nccwpck_require__(765);
@@ -20,9 +18,6 @@ function shell(command, options) {
     },
     ...options
   }});
-  // core.warning(`sh.status: ${sh.status}`);
-  // core.warning(`sh.stderr: ${sh.stderr}`);
-  // core.warning(`sh.stdout: ${sh.stdout}`);
   return {
     status: sh.status,
     stderr: sh.stderr.toString(),
@@ -51,7 +46,7 @@ function terraform(params) {
   let tf_plan = `\ufe63`;
   let tf_apply = `\ufe63`;
 
-  core.startGroup('Setup Google Cloud');
+  core.startGroup('Setup Google Cloud credentials');
   shell(`printf '%s' '${core.getInput('google_credentials')}' > $GOOGLE_APPLICATION_CREDENTIALS`);
   core.endGroup();
 

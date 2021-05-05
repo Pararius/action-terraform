@@ -1,6 +1,4 @@
 const core = require('@actions/core');
-// const github = require('@actions/github');
-// const io = require('@actions/io');
 const tc = require('@actions/tool-cache');
 const {spawnSync} = require('child_process');
 const { exit } = require('process');
@@ -13,9 +11,6 @@ function shell(command, options) {
     },
     ...options
   }});
-  // core.warning(`sh.status: ${sh.status}`);
-  // core.warning(`sh.stderr: ${sh.stderr}`);
-  // core.warning(`sh.stdout: ${sh.stdout}`);
   return {
     status: sh.status,
     stderr: sh.stderr.toString(),
@@ -44,7 +39,7 @@ function terraform(params) {
   let tf_plan = `\ufe63`;
   let tf_apply = `\ufe63`;
 
-  core.startGroup('Setup Google Cloud');
+  core.startGroup('Setup Google Cloud credentials');
   shell(`printf '%s' '${core.getInput('google_credentials')}' > $GOOGLE_APPLICATION_CREDENTIALS`);
   core.endGroup();
 
