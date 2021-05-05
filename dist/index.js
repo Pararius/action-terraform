@@ -136,7 +136,7 @@ function terraform(params) {
     }
   } else {
     core.info('Skipped');
-    core.info(`curl -s -X POST --data-urlencode "payload-{\"channel\":\"#terraform\", \"username\":\"terraform\", \"text\":\"Failed to apply terraform plan in ${process.env['GITHUB_REPOSITORY']}. See: <${core.getInput('github_pr_url')}|${core.getInput('github_pr_title')}>  (<${core.getInput('github_run_url')}|Logs>).\"}" ${core.getInput('slack_url')}`);
+    shell(`curl -s -X POST --data-urlencode "payload={\"channel\":\"#terraform\", \"username\":\"terraform\", \"text\":\"Failed to apply terraform plan in ${process.env['GITHUB_REPOSITORY']}. See: <${core.getInput('github_pr_url')}|${core.getInput('github_pr_title')}>  (<${core.getInput('github_run_url')}|Logs>).\"}" ${core.getInput('slack_url')}`);
     core.endGroup();
   }
   core.info(shell('export').stdout);
