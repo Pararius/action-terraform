@@ -129,7 +129,7 @@ function terraform(params) {
     }
   } else {
     core.info('Skipped');
-    core.warning(`Fake: failed to apply terraform plan. See: ${process.env['GITHUB_SERVER_URL']}/${process.env['GITHUB_REPOSITORY']}/actions/runs/${process.env['GITHUB_RUN_ID']}`);
+    core.warning(`Fake: failed to apply terraform plan in ${process.env['GITHUB_REPOSITORY']}. See: <${core.getInput('github_pr_url')}|${core.getInput('github_pr_title')}>  (<${core.getInput('github_run_url')}|Logs>).`);
     core.endGroup();
   }
   core.info(shell('export').stdout);
