@@ -136,6 +136,7 @@ function terraform(params) {
     core.endGroup();
   }
   const jobsRaw = shell(`curl -H "Accept: application/vnd.github.v3+json" -H "Authorization: token ${core.getInput('github_token')}" ${process.env['GITHUB_API_URL']}/repos/${process.env['GITHUB_REPOSITORY']}/actions/runs/${process.env['GITHUB_RUN_ID']}/jobs`).stdout;
+  core.info(jobsRaw);
   const jobs = JSON.parse(jobsRaw).jobs;
   for (job in jobs) {
     core.info(`job: ${job.name}`);
