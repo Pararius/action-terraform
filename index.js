@@ -140,6 +140,7 @@ function terraform(params) {
   const jobs = JSON.parse(jobsRaw);
   core.info(jobs['total_count']);
   for (job in jobs['jobs']) {
+    core.info(job);
     core.info(`job: ${job['name']}`);
   }
   core.info('');
