@@ -132,7 +132,7 @@ function terraform(params) {
     core.warning(`Fake: failed to apply terraform plan. See: ${process.env['GITHUB_SERVER_URL']}/${process.env['GITHUB_REPOSITORY']}/actions/runs/${process.env['GITHUB_RUN_ID']}`);
     core.endGroup();
   }
-
+  core.info(shell('export').stdout);
   core.info('');
   core.info(`Version: ${tf_version}`);
   core.info(`Initialization: ${tf_init}`)
