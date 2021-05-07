@@ -9,6 +9,10 @@ const core = __nccwpck_require__(398);
 const tc = __nccwpck_require__(220);
 const {spawnSync} = __nccwpck_require__(129);
 
+const status_skipped = '﹣';
+const status_success = '✓'
+const status_failed = '✕';
+
 function shell(command, options) {
   const sh = spawnSync('/bin/sh', ['-c', `${command} 2>&1`], {
     ...{env: {
@@ -40,10 +44,10 @@ function terraform(params) {
   let terraformDoApply = core.getInput('terraform_do_apply');
 
   let tf_version = '<unknown>';
-  let tf_init = `\ufe63`;
-  let tf_fmt = `\ufe63`;
-  let tf_plan = `\ufe63`;
-  let tf_apply = `\ufe63`;
+  let tf_init = status_skipped;
+  let tf_fmt = status_skipped;
+  let tf_plan = status_skipped;
+  let tf_apply = status_skipped;
 
   core.startGroup('Configure Google Cloud credentials');
   shell(`printf '%s' '${core.getInput('google_credentials')}' > $GOOGLE_APPLICATION_CREDENTIALS`);
@@ -51,9 +55,9 @@ function terraform(params) {
 
   core.startGroup('Setup Terraform CLI');
   core.info(`Working directory: ${terraformDirectory}`);
+  core.info('Installing tfswitch:');
   const tfsPath = await tc.downloadTool('https://raw.githubusercontent.com/warrensbox/terraform-switcher/release/install.sh');
   const tfsInstall = shell(`chmod +x ${tfsPath} && ${tfsPath} -b ${process.env['HOME']}/`);
-  core.info('Installing tfswitch:');
   core.info(tfsInstall.stdout);
   core.info(tfsInstall.stderr);
   const tfs = shell(`${process.env['HOME']}/tfswitch -b ${process.env['HOME']}/terraform`, {
@@ -86,11 +90,11 @@ function terraform(params) {
   core.info(tfi.stdout);
   core.endGroup();
   if (tfi.status > 0) {
-    tf_init = `\u2715`;
+    tf_init = status_failed;
     core.setFailed(`Failed to initialize terraform [err:${tfi.status}]`);
     terraformDoApply = 'false';
   } else {
-    tf_init = `\u2713`;
+    tf_init = status_success;
   }
 
   core.startGroup('Run terraform fmt');
@@ -101,11 +105,11 @@ function terraform(params) {
   }
   core.endGroup();
   if (tffc.status > 0) {
-    tf_fmt = `\u2715`;
+    tf_fmt = status_failed;
     core.setFailed(`Failed to pass terraform formatting checks [err:${tffc.status}]`);
     terraformDoApply = 'false';
   } else {
-    tf_fmt = `\u2713`;
+    tf_fmt = status_success;
   }
 
   core.startGroup('Run terraform plan');
@@ -113,11 +117,11 @@ function terraform(params) {
   core.info(tfp.stdout);
   core.endGroup();
   if (tfp.status > 0) {
-    tf_plan = `\u2715`;
+    tf_plan = status_failed;
     core.setFailed(`Failed to prepare the terraform plan [err:${tfp.status}]`);
     terraformDoApply = 'false';
   } else {
-    tf_plan = `\u2713`;
+    tf_plan = status_success;
   }
 
   core.startGroup('Run terraform apply');
@@ -126,10 +130,10 @@ function terraform(params) {
     core.info(tfa.stdout);
     core.endGroup();
     if (tfa.status > 0) {
-      tf_apply = `\u2715`;
+      tf_apply = status_failed;
       core.setFailed(`Failed to apply terraform plan [err:${tfa.status}]`);
     } else {
-      tf_apply = `\u2713`;
+      tf_apply = status_success;
     }
   } else {
     core.info('Skipped');
