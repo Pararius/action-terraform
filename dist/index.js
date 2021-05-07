@@ -60,10 +60,10 @@ function terraform(params) {
   const tfsInstall = shell(`chmod +x ${tfsPath} && ${tfsPath} -b ${process.env['HOME']}/`);
   core.info(tfsInstall.stdout);
   core.info(tfsInstall.stderr);
+  core.info('Running tfswitch:');
   const tfs = shell(`${process.env['HOME']}/tfswitch -b ${process.env['HOME']}/terraform`, {
     cwd: terraformDirectory
   });
-  core.info('Running tfswitch:');
   core.info(tfs.stdout);
   core.info(tfs.stderr);
   core.endGroup();
