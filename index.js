@@ -1,7 +1,6 @@
 const core = require('@actions/core');
 const tc = require('@actions/tool-cache');
 const {spawnSync} = require('child_process');
-const { exit } = require('process');
 
 function shell(command, options) {
   const sh = spawnSync('/bin/sh', ['-c', `${command} 2>&1`], {

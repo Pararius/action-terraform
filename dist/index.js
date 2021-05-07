@@ -8,7 +8,6 @@ module.exports =
 const core = __nccwpck_require__(398);
 const tc = __nccwpck_require__(220);
 const {spawnSync} = __nccwpck_require__(129);
-const { exit } = __nccwpck_require__(765);
 
 function shell(command, options) {
   const sh = spawnSync('/bin/sh', ['-c', `${command} 2>&1`], {
@@ -5186,14 +5185,6 @@ module.exports = require("os");;
 
 "use strict";
 module.exports = require("path");;
-
-/***/ }),
-
-/***/ 765:
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("process");;
 
 /***/ }),
 
