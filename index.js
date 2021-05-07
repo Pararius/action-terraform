@@ -1,8 +1,6 @@
 const core = require('@actions/core');
-const github = require('@actions/github');
 const tc = require('@actions/tool-cache');
 const {spawnSync} = require('child_process');
-const { Cipher } = require('crypto');
 const { exit } = require('process');
 
 function shell(command, options) {
@@ -129,19 +127,7 @@ function terraform(params) {
     }
   } else {
     core.info('Skipped');
-    const c = shell(`curl -s -X POST --data-urlencode "payload={\\\"channel\\\":\\\"#terraform\\\", \\\"username\\\":\\\"terraform\\\", \\\"text\\\":\\\"Failed to apply terraform plan in ${process.env['GITHUB_REPOSITORY']}. See: <${core.getInput('github_pr_url')}|${core.getInput('github_pr_title')}>  (<${core.getInput('github_run_url')}|Logs>).\\\"}" ${core.getInput('slack_url')}`);
-    core.info(c.stdout);
-    core.info(c.stderr);
-    core.info(`curl -s -X POST --data-urlencode "payload={\\\"channel\\\":\\\"#terraform\\\", \\\"username\\\":\\\"terraform\\\", \\\"text\\\":\\\"Failed to apply terraform plan in ${process.env['GITHUB_REPOSITORY']}. See: <${core.getInput('github_pr_url')}|${core.getInput('github_pr_title')}>  (<${core.getInput('github_run_url')}|Logs>).\\\"}" ${core.getInput('slack_url')}`);
     core.endGroup();
-  }
-  const jobsRaw = shell(`curl -s -H "Accept: application/vnd.github.v3+json" -H "Authorization: token ${core.getInput('github_token')}" ${process.env['GITHUB_API_URL']}/repos/${process.env['GITHUB_REPOSITORY']}/actions/runs/${process.env['GITHUB_RUN_ID']}/jobs`).stdout;
-  core.info(jobsRaw);
-  const jobs = JSON.parse(jobsRaw);
-  core.info(jobs['total_count']);
-  for (job in jobs['jobs']) {
-    core.info(job);
-    core.info(`job: ${jobs['jobs'][job]['name']}`);
   }
   core.info('');
   core.info(`Version: ${tf_version}`);
