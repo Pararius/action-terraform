@@ -17,7 +17,10 @@ function shell(command, options) {
   const sh = spawnSync('/bin/sh', ['-c', `${command} 2>&1`], {
     ...{env: {
       ...process.env,
-      ...{'GOOGLE_APPLICATION_CREDENTIALS': `${process.env['HOME']}/gcloud.json`}
+      ...{
+          'GOOGLE_APPLICATION_CREDENTIALS': `${process.env['HOME']}/gcloud.json`,
+          'TF_LOG': 'DEBUG'
+         }
     },
     ...options
   }});
@@ -29,7 +32,7 @@ function shell(command, options) {
 }
 
 function terraform(params) {
-  const tf = shell(`${process.env['HOME']}/terraform --debug ${params}`, {
+  const tf = shell(`${process.env['HOME']}/terraform ${params}`, {
     cwd: core.getInput('terraform_directory')
   });
   return {
