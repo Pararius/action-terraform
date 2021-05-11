@@ -22,7 +22,7 @@ function shell(command, options) {
 }
 
 function terraform(params) {
-  const tf = shell(`${process.env['HOME']}/terraform ${params}`, {
+  const tf = shell(`${process.env['HOME']}/terraform --debug ${params}`, {
     cwd: core.getInput('terraform_directory')
   });
   return {
