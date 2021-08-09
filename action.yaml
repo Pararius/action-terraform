@@ -13,6 +13,10 @@ inputs:
     required: false
     description: Whether to run `terraform apply` as last step
     default: 'false'
+  terraform_lock:
+    required: false
+    description: Whehter to (try to) lock the state during plan/apply
+    default: 'false'
 runs:
   using: node12
   main: dist/index.js

@@ -42,6 +42,7 @@ function terraform(params) {
 (async () => {
   const terraformDirectory = core.getInput('terraform_directory');
   let terraformDoApply = core.getInput('terraform_do_apply');
+  const terraformLock = core.getInput('terraform_lock');
 
   let tf_version = '<unknown>';
   let tf_init = status_skipped;
@@ -113,7 +114,7 @@ function terraform(params) {
   }
 
   core.startGroup('Run terraform plan');
-  const tfp = terraform('plan -out=terraform.plan');
+  const tfp = terraform('plan -out=terraform.plan -lock=' + terraformLock);
   core.info(tfp.stdout);
   core.endGroup();
   if (tfp.status > 0) {
@@ -126,7 +127,7 @@ function terraform(params) {
 
   core.startGroup('Run terraform apply');
   if (terraformDoApply === 'true') {
-    const tfa = terraform('apply -auto-approve terraform.plan');
+    const tfa = terraform('apply -auto-approve terraform.plan -lock=' + terraformLock);
     core.info(tfa.stdout);
     core.endGroup();
     if (tfa.status > 0) {
