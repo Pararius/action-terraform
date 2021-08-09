@@ -15,7 +15,7 @@ inputs:
     default: 'false'
   terraform_lock:
     required: false
-    description: Whehter to (try to) lock the state during plan/apply
+    description: Whether to (try to) lock the state during plan/apply
     default: 'false'
 runs:
   using: node12
