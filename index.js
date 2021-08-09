@@ -35,12 +35,21 @@ function terraform(params) {
 (async () => {
   const terraformDirectory = core.getInput('terraform_directory');
   let terraformDoApply = core.getInput('terraform_do_apply');
+  const terraformLock = core.getInput('terraform_lock');
 
   let tf_version = '<unknown>';
   let tf_init = status_skipped;
   let tf_fmt = status_skipped;
   let tf_plan = status_skipped;
   let tf_apply = status_skipped;
+
+  core.startGroup('Sanity checking inputs');
+  if (terraformLock !== 'true' && terraformLock !== 'false') {
+    core.setFailed(`Sanity checks failed. Unknown value for 'terraform_lock': ${terraformLock}`);
+    process.exit(1);
+  }
+  core.info('Good to go!');
+  core.endGroup();
 
   core.startGroup('Configure Google Cloud credentials');
   shell(`printf '%s' '${core.getInput('google_credentials')}' > $GOOGLE_APPLICATION_CREDENTIALS`);
@@ -106,7 +115,7 @@ function terraform(params) {
   }
 
   core.startGroup('Run terraform plan');
-  const tfp = terraform('plan -out=terraform.plan');
+  const tfp = terraform('plan -out=terraform.plan -lock=' + terraformLock);
   core.info(tfp.stdout);
   core.endGroup();
   if (tfp.status > 0) {
@@ -119,7 +128,7 @@ function terraform(params) {
 
   core.startGroup('Run terraform apply');
   if (terraformDoApply === 'true') {
-    const tfa = terraform('apply -auto-approve terraform.plan');
+    const tfa = terraform('apply -auto-approve terraform.plan -lock=' + terraformLock);
     core.info(tfa.stdout);
     core.endGroup();
     if (tfa.status > 0) {
