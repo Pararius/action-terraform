@@ -43,6 +43,14 @@ function terraform(params) {
   let tf_plan = status_skipped;
   let tf_apply = status_skipped;
 
+  core.startGroup('Sanity checking inputs');
+  if (terraformLock !== 'true' && terraformLock !== 'false') {
+    core.setFailed(`Sanity checks failed. Unknown value for 'terraform_lock': ${terraformLock}`);
+    process.exit(1);
+  }
+  core.info('Good to go!');
+  core.endGroup();
+
   core.startGroup('Configure Google Cloud credentials');
   shell(`printf '%s' '${core.getInput('google_credentials')}' > $GOOGLE_APPLICATION_CREDENTIALS`);
   core.endGroup();
