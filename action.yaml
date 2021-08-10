@@ -17,6 +17,10 @@ inputs:
     required: false
     description: Whether to (try to) lock the state during plan/apply
     default: 'false'
+  terraform_parallelism:
+    required: false
+    description: Limit the number of concurrent operations during plan/apply
+    default: '10'
 runs:
   using: node12
   main: dist/index.js
