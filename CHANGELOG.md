@@ -1,6 +1,9 @@
 CHANGELOG
 =========
 
+v0.0.5:
+* Fix (read: invert) logic for parallelism sanity check
+
 v0.0.4:
 * Fix typo
 
