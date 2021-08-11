@@ -56,7 +56,7 @@ function terraform(params) {
     core.setFailed(`Sanity checks failed. Unknown value for 'terraform_lock': ${terraformLock}`);
     process.exit(1);
   }
-  if (/^\d+$/.test(terraformParellelism)) {
+  if (/^\d+$/.test(terraformParallelism)) {
     core.setFailed(`Sanity checks failed. Non-integer value for 'terraform_parallelism': ${terraformParallelism}`);
     process.exit(1);
   }
