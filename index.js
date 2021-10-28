@@ -35,14 +35,19 @@ function terraform(params) {
 (async () => {
   const terraformDirectory = core.getInput('terraform_directory');
   let terraformDoApply = core.getInput('terraform_do_apply');
+  const terraformDoDestroy = core.getInput('terraform_do_destroy');
   const terraformLock = core.getInput('terraform_lock');
   const terraformParallelism = core.getInput('terraform_parallelism');
+  const terraformWorkspace = core.getInput('terraform_workspace');
 
   let tf_version = '<unknown>';
+  let tf_workspace_selection = status_skipped;
   let tf_init = status_skipped;
   let tf_fmt = status_skipped;
   let tf_plan = status_skipped;
   let tf_apply = status_skipped;
+  let tf_destroy = status_skipped;
+  let tf_workspace_deletion = status_skipped;
 
   core.startGroup('Sanity checking inputs');
   if (terraformLock !== 'true' && terraformLock !== 'false') {
@@ -90,6 +95,20 @@ function terraform(params) {
     terraformDoApply = 'false';
   } else {
     tf_version = tfv.stdout.replace(/\r?\n|\r/g, ' ').match(/ v([0-9]+\.[0-9]+\.[0-9]+) /)[1];
+  }
+
+  if (terraformWorkspace) {
+    core.startGroup('Run terraform workspace selection');
+    const tfws = terraform(`workspace select ${terraformWorkspace}`);
+    core.info(tfws.stdout);
+    core.endGroup();
+    if (tfws.status > 0) {
+      tf_workspace_selection = status_failed;
+      core.setFailed(`Failed to select terraform workspace [err:${tfws.status}]`);
+      terraformDoApply = 'false';
+    } else {
+      tf_workspace_selection = status_success;
+    }
   }
 
   core.startGroup('Run terraform init');
@@ -145,13 +164,47 @@ function terraform(params) {
   } else {
     core.info('Skipped');
     core.endGroup();
+
+    core.startGroup('Run terraform destroy');
+    if (terraformDoDestroy === 'true') {
+      const tfd = terraform(`destroy -auto-approve -lock=${terraformLock} -parallelism=${terraformParallelism}`);
+      core.info(tfd.stdout);
+      core.endGroup();
+      if (tfd.status > 0) {
+        tf_destroy = status_failed;
+        core.setFailed(`Failed to destroy resources [err:${tfd.status}]`);
+      } else {
+        tf_destroy = status_success;
+
+        if (terraformWorkspace) {
+          core.startGroup('Run terraform workspace deletion');
+          terraform(`workspace select default`); // have to switch to different workspace before deleting workspace defined in `terraformWorkspace`
+          const tfwr = terraform(`workspace delete ${terraformWorkspace}`);
+          core.info(tfwr.stdout);
+          core.endGroup();
+          if (tfwr.status > 0) {
+            tf_workspace_deletion = status_failed;
+            core.setFailed(`Failed to delete terraform workspace [err:${tfwr.status}]`);
+          } else {
+            tf_workspace_deletion = status_success;
+          }
+        }
+      }
+    } else {
+      core.info('Skipped');
+      core.endGroup();
+    }
   }
+
   core.info('');
   core.info(`Version: ${tf_version}`);
+  core.info(`Workspace selection: ${tf_workspace_selection}`)
   core.info(`Initialization: ${tf_init}`)
   core.info(`Formatting: ${tf_fmt}`)
   core.info(`Plan: ${tf_plan}`)
   core.info(`Apply: ${tf_apply}`)
+  core.info(`Destroy: ${tf_destroy}`)
+  core.info(`Workspace deletion: ${tf_workspace_deletion}`)
 })().catch(error => {
   core.setFailed(error.message);
 });
