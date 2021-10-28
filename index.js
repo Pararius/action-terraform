@@ -42,6 +42,7 @@ function terraform(params) {
 
   let tf_version = '<unknown>';
   let tf_workspace_selection = status_skipped;
+  let tf_workspace_creation = status_skipped;
   let tf_init = status_skipped;
   let tf_fmt = status_skipped;
   let tf_plan = status_skipped;
@@ -105,7 +106,20 @@ function terraform(params) {
     if (tfws.status > 0) {
       tf_workspace_selection = status_failed;
       core.setFailed(`Failed to select terraform workspace [err:${tfws.status}]`);
-      terraformDoApply = 'false';
+
+      core.startGroup('Run terraform workspace creation');
+      const tfwn = terraform(`workspace new ${terraformWorkspace}`);
+      core.info(tfwn.stdout);
+      core.endGroup();
+
+      if (tfwn.status > 0) {
+        tf_workspace_creation = status_failed
+        core.setFailed(`Failed to create terraform workspace`);
+
+        terraformDoApply = 'false';
+      } else {
+        tf_workspace_creation = status_success
+      }
     } else {
       tf_workspace_selection = status_success;
     }
@@ -198,6 +212,7 @@ function terraform(params) {
 
   core.info('');
   core.info(`Version: ${tf_version}`);
+  core.info(`Workspace creation: ${tf_workspace_creation}`)
   core.info(`Workspace selection: ${tf_workspace_selection}`)
   core.info(`Initialization: ${tf_init}`)
   core.info(`Formatting: ${tf_fmt}`)
