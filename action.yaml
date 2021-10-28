@@ -21,6 +21,12 @@ inputs:
     required: false
     description: Limit the number of concurrent operations during plan/apply
     default: '10'
+  terraform_workspace:
+    required: false
+    description: The name of the workspace that resources should be applied in
+  terraform_do_destroy:
+    required: false
+    description: Whether to run `terraform destroy` (`terraform_do_apply` and `terraform_do_destroy` can not both be true)
 runs:
   using: node12
   main: dist/index.js
