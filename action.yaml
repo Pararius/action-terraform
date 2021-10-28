@@ -2,9 +2,12 @@
 name: Terraform
 description: Terraform all-in-one workflow
 inputs:
+  github_token:
+    required: false
+    description: GitHub token used for posting comments on pull requests with the latest terraform results (optional)
   google_credentials:
     required: true
-    description: Google credentials
+    description: Google credentials used to apply and destroy configurations in GCP
   terraform_directory:
     required: false
     description: Location of terraform manifests
@@ -13,14 +16,123 @@ inputs:
     required: false
     description: Whether to run `terraform apply` as last step
     default: 'false'
-  terraform_lock:
+  terraform_do_destroy:
     required: false
-    description: Whether to (try to) lock the state during plan/apply
-    default: 'false'
+    description: Whether to run `terraform destroy` (`terraform_do_apply` and `terraform_do_destroy` can not both be true)
   terraform_parallelism:
     required: false
     description: Limit the number of concurrent operations during plan/apply
     default: '10'
+  terraform_use_workspaces:
+    required: false
+    description: Whether to use workspaces for isolating states based on the branch used (recommended)
+    default: 'false'
+  terraform_workspace_main_branch:
+    required: false
+    description: The git branch deemed as "production", used to determine the default workspace
+    default: 'main'
 runs:
-  using: node12
-  main: dist/index.js
+  using: "composite"
+  steps:
+    - uses: hashicorp/setup-terraform@v1
+
+    - name: Create file for Google credentials loading
+      run: |
+        echo '${{ secrets.GCLOUD_AUTH_TF_RW }}' > /tmp/gcloud.json
+        echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcloud.json" >> $GITHUB_ENV
+
+    - name: Pass additional variable to terraform for doing things based on the current branch (optional)
+      run: |
+        echo "TF_VAR_git_branch=${BRANCH}" >> $GITHUB_ENV
+
+    - name: Define branch for pushes
+      if: |
+        inputs.terraform_use_workspaces == 'true' && github.event_name == 'push'
+      run: |
+        echo "BRANCH=${GITHUB_REF##*/}" >> $GITHUB_ENV
+
+    - name: Define branch for pull requests
+      if: |
+        inputs.terraform_use_workspaces == 'true' && github.event_name == 'pull_request'
+      run: |
+        echo "BRANCH=${GITHUB_HEAD_REF##*/}" >> $GITHUB_ENV
+
+    - name: Define workspace for production (main branch)
+      if: |
+        inputs.terraform_use_workspaces == 'true' && env.BRANCH == 'main'
+      run: |
+        echo "WORKSPACE=default" >> $GITHUB_ENV
+
+    - name: Define workspace for other branches
+      if: |
+        inputs.terraform_use_workspaces == 'true' && env.BRANCH != 'main'
+      run:
+        echo "WORKSPACE=${GITHUB_REF##*/}" >> $GITHUB_ENV
+
+    - name: Terraform Init
+      run: terraform init
+
+    - name: Terraform workspace selection
+      if: inputs.terraform_use_workspaces == 'true'
+      run: terraform workspace select ${{ env.WORKSPACE }} || terraform workspace new ${{ env.WORKSPACE }}
+
+    - name: Terraform Init
+      run: terraform init
+
+    - name: Terraform fmt
+      id: fmt
+      run: terraform fmt -check
+
+    - name: Terraform Init
+      id: init
+      run: terraform init
+
+    - name: Terraform Validate
+      id: validate
+      run: terraform validate -no-color
+
+    - name: Terraform Apply
+      id: apply
+      if: input.terraform_do_apply == 'true'
+      run: terraform apply -no-color -auto-approve -parallelism=${{ input.terraform_parallelism }}
+
+    - name: Terraform Destroy
+      id: destroy
+      if: input.terraform_do_destroy == 'true' && env.WORKSPACE != 'default' && env.WORKSPACE != 'dev'
+      run: terraform destroy -no-color -auto-approve -parallelism=${{ input.terraform_parallelism }}
+
+    - name: Terraform delete workspace
+      if: inputs.terraform_use_workspaces == 'true' && input.terraform_do_destroy == 'true' && env.WORKSPACE != 'default' && env.WORKSPACE != 'dev'
+      run: |
+        terraform workspace select default &&
+        terraform workspace delete ${{ env.WORKSPACE }}
+
+    - uses: actions/github-script@0.9.0
+      if: github.event_name == 'pull_request' && input.github_token && input.terraform_do_apply == 'true'
+      env:
+        RESULT: "terraform\n${{ steps.apply.outputs.stdout }}"
+      with:
+        github-token: ${{ input.github_token }}
+        script: |
+          const output = `#### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
+          #### Terraform Workspace ⚙️\`${{ env.WORKSPACE }}\`
+          #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
+          #### Terraform Validation 🤖\`${{ steps.validate.outputs.stdout }}\`
+          #### Terraform Apply 🚀\`${{ steps.apply.outcome }}\`
+
+          <details><summary>Show result</summary>
+
+          \`\`\`\n
+          ${process.env.RESULT}
+          \`\`\`
+
+          </details>
+
+          *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Workflow: \`${{ github.workflow }}\`*`;
+
+          github.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: output
+          })
