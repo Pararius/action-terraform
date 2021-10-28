@@ -41,10 +41,6 @@ runs:
         echo '${{ secrets.GCLOUD_AUTH_TF_RW }}' > /tmp/gcloud.json
         echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcloud.json" >> $GITHUB_ENV
 
-    - name: Pass additional variable to terraform for doing things based on the current branch (optional)
-      run: |
-        echo "TF_VAR_git_branch=${BRANCH}" >> $GITHUB_ENV
-
     - name: Define branch for pushes
       if: |
         inputs.terraform_use_workspaces == 'true' && github.event_name == 'push'
@@ -59,53 +55,62 @@ runs:
 
     - name: Define workspace for production (main branch)
       if: |
-        inputs.terraform_use_workspaces == 'true' && env.BRANCH == 'main'
+        inputs.terraform_use_workspaces == 'true' && env.BRANCH == inputs.terraform_workspace_main_branch
       run: |
         echo "WORKSPACE=default" >> $GITHUB_ENV
 
     - name: Define workspace for other branches
       if: |
-        inputs.terraform_use_workspaces == 'true' && env.BRANCH != 'main'
+        inputs.terraform_use_workspaces == 'true' && env.BRANCH != inputs.terraform_workspace_main_branch
       run:
         echo "WORKSPACE=${GITHUB_REF##*/}" >> $GITHUB_ENV
 
+    - name: Pass additional variable to terraform for doing things based on the current branch (optional)
+      run: |
+        echo "TF_VAR_git_branch=${BRANCH}" >> $GITHUB_ENV
+
+    - name: Terraform fmt
+      id: fmt
+      if: input.terraform_do_apply == 'true'
+      run: terraform fmt -check
+      working-directory: inputs.terraform_directory
+
     - name: Terraform Init
       run: terraform init
+      working-directory: inputs.terraform_directory
 
     - name: Terraform workspace selection
       if: inputs.terraform_use_workspaces == 'true'
       run: terraform workspace select ${{ env.WORKSPACE }} || terraform workspace new ${{ env.WORKSPACE }}
+      working-directory: inputs.terraform_directory
 
     - name: Terraform Init
       run: terraform init
-
-    - name: Terraform fmt
-      id: fmt
-      run: terraform fmt -check
-
-    - name: Terraform Init
-      id: init
-      run: terraform init
+      working-directory: inputs.terraform_directory
 
     - name: Terraform Validate
       id: validate
       run: terraform validate -no-color
+      working-directory: inputs.terraform_directory
 
     - name: Terraform Apply
       id: apply
       if: input.terraform_do_apply == 'true'
       run: terraform apply -no-color -auto-approve -parallelism=${{ input.terraform_parallelism }}
+      working-directory: inputs.terraform_directory
 
     - name: Terraform Destroy
       id: destroy
       if: input.terraform_do_destroy == 'true' && env.WORKSPACE != 'default' && env.WORKSPACE != 'dev'
       run: terraform destroy -no-color -auto-approve -parallelism=${{ input.terraform_parallelism }}
+      working-directory: inputs.terraform_directory
 
     - name: Terraform delete workspace
       if: inputs.terraform_use_workspaces == 'true' && input.terraform_do_destroy == 'true' && env.WORKSPACE != 'default' && env.WORKSPACE != 'dev'
       run: |
         terraform workspace select default &&
         terraform workspace delete ${{ env.WORKSPACE }}
+      working-directory: inputs.terraform_directory
 
     - uses: actions/github-script@0.9.0
       if: github.event_name == 'pull_request' && input.github_token && input.terraform_do_apply == 'true'
