@@ -13,10 +13,6 @@ inputs:
     required: false
     description: Whether to run `terraform apply` as last step
     default: 'false'
-  terraform_lock:
-    required: false
-    description: Whether to (try to) lock the state during plan/apply
-    default: 'false'
   terraform_parallelism:
     required: false
     description: Limit the number of concurrent operations during plan/apply

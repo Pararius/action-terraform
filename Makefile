@@ -5,4 +5,9 @@ help: ## Show this help message.
 	@egrep '^(.+)\:(.+)?\ ##\ (.+)' ${MAKEFILE_LIST} | column -t -c 2 -s ':#'
 
 compile:
-	docker compose run --rm node ncc build index.js
+	docker compose run --rm node npx ncc build index.js
+
+tests:
+	docker compose run --rm node npm test
+
+.PHONY: compile test

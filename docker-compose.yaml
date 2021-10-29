@@ -1,6 +1,8 @@
 services:
   node:
-    build: .
+    build:
+      context: .
+      target: base
     volumes:
       - ./:/app
     working_dir: /app
