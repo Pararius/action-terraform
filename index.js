@@ -120,7 +120,7 @@ function terraform(params) {
   }
 
   core.startGroup('Run terraform plan');
-  const tfp = terraform(`plan -out=terraform.plan -lock=${terraformLock} -parallelism=${terraformParallelism}`);
+  const tfp = terraform(`plan -lock=${terraformLock} -parallelism=${terraformParallelism} -out=terraform.plan`);
   core.info(tfp.stdout);
   core.endGroup();
   if (tfp.status > 0) {
@@ -133,7 +133,7 @@ function terraform(params) {
 
   core.startGroup('Run terraform apply');
   if (terraformDoApply === 'true') {
-    const tfa = terraform(`apply -auto-approve terraform.plan -lock=${terraformLock} -parallelism=${terraformParallelism}`);
+    const tfa = terraform(`apply -lock=${terraformLock} -parallelism=${terraformParallelism} -auto-approve terraform.plan`);
     core.info(tfa.stdout);
     core.endGroup();
     if (tfa.status > 0) {
