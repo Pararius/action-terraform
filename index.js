@@ -7,6 +7,7 @@ const status_success = '✓'
 const status_failed = '✕';
 
 function shell(command, options) {
+  core.debug(`Running command: ${command}`);
   const sh = spawnSync('/bin/sh', ['-c', `${command} 2>&1`], {
     ...{env: {
       ...process.env,
