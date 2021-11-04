@@ -8,7 +8,7 @@ const status_failed = '✕';
 
 function shell(command, options) {
   core.debug(`Running command: ${command}`);
-  const sh = spawnSync('/bin/sh', ['-c', `${command} 2>&1`], {
+  const sh = spawnSync('/bin/sh', ['-c', command], {
     ...{env: {
       ...process.env,
       ...{'GOOGLE_APPLICATION_CREDENTIALS': `${process.env['HOME']}/gcloud.json`}
