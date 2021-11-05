@@ -8,6 +8,10 @@ const status_failed = '✕';
 
 async function shell(command, args, options) {
   options.env.GOOGLE_APPLICATION_CREDENTIALS = `${process.env['HOME']}/gcloud.json`;
+  options.listeners = {
+    ...options.listeners,
+    debug: (data) => { core.debug(data.toString()) }
+  }
 
   const result = await exec.getExecOutput(command, args, options);
   return {
