@@ -5208,6 +5208,8 @@ const status_skipped = '﹣';
 const status_success = '✓'
 const status_failed = '✕';
 
+const terraformPath = `${process.env['HOME']}/terraform`;
+
 async function shell(command, args, options = {}) {
   options.env = {
     ...process.env,
@@ -5228,7 +5230,7 @@ async function shell(command, args, options = {}) {
 }
 
 async function terraform(args) {
-  return await shell(`${process.env['HOME']}/terraform`, args, {
+  return await shell(terraformPath, args, {
     cwd: core.getInput('terraform_directory'),
   });
 }
@@ -5268,7 +5270,7 @@ async function terraform(args) {
   await shell('chmod', ['+x', tfsPath]);
   await shell(tfsPath, ['-b', `${process.env['HOME']}/`]);
   core.info('Running tfswitch:');
-  const tfs = await shell(`${process.env['HOME']}/tfswitch`, ['-b', `${process.env['HOME']}/terraform`], {
+  const tfs = await shell(`${process.env['HOME']}/tfswitch`, ['-b', terraformPath], {
     cwd: terraformDirectory,
   });
   core.endGroup();
