@@ -2,11 +2,13 @@ const core = require('@actions/core');
 const tc = require('@actions/tool-cache');
 const exec = require('@actions/exec');
 const fs = require('fs');
+const path = require('path');
 
 const status_skipped = '﹣';
 const status_success = '✓'
 const status_failed = '✕';
 
+const tfswitchPath = `${process.env['HOME']}/tfswitch`
 const terraformPath = `${process.env['HOME']}/terraform`;
 
 async function shell(command, args, options = {}) {
@@ -66,10 +68,9 @@ async function terraform(args) {
   core.info(`Working directory: ${terraformDirectory}`);
   core.info('Installing tfswitch:');
   const tfsPath = await tc.downloadTool('https://raw.githubusercontent.com/warrensbox/terraform-switcher/release/install.sh');
-  await shell('chmod', ['+x', tfsPath]);
-  await shell(tfsPath, ['-b', `${process.env['HOME']}/`]);
+  await shell('bash', [tfsPath, '-b', path.dirname(tfswitchPath)]);
   core.info('Running tfswitch:');
-  const tfs = await shell(`${process.env['HOME']}/tfswitch`, ['-b', terraformPath], {
+  const tfs = await shell(tfswitchPath, ['-b', terraformPath], {
     cwd: terraformDirectory,
   });
   core.endGroup();
