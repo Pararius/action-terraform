@@ -1,36 +1,26 @@
 const core = require('@actions/core');
 const tc = require('@actions/tool-cache');
-const {spawnSync} = require('child_process');
+const exec = require('@actions/exec');
 
 const status_skipped = '﹣';
 const status_success = '✓'
 const status_failed = '✕';
 
-function shell(command, options) {
-  core.debug(`Running command: ${command}`);
-  const sh = spawnSync('/bin/sh', ['-c', command], {
-    ...{env: {
-      ...process.env,
-      ...{'GOOGLE_APPLICATION_CREDENTIALS': `${process.env['HOME']}/gcloud.json`}
-    },
-    ...options
-  }});
+async function shell(command, args, options) {
+  options.env.GOOGLE_APPLICATION_CREDENTIALS = `${process.env['HOME']}/gcloud.json`;
+
+  const result = await exec.getExecOutput(command, args, options);
   return {
-    status: sh.status,
-    stderr: sh.stderr.toString(),
-    stdout: sh.stdout.toString()
+    status: result.exitCode,
+    stderr: result.stderr,
+    stdout: result.stdout,
   }
 }
 
-function terraform(params) {
-  const tf = shell(`${process.env['HOME']}/terraform ${params}`, {
-    cwd: core.getInput('terraform_directory')
+async function terraform(args) {
+  return await shell(`${process.env['HOME']}/terraform`, args, {
+    cwd: core.getInput('terraform_directory'),
   });
-  return {
-    status: tf.status,
-    stderr: tf.stderr,
-    stdout: tf.stdout
-  }
 }
 
 (async () => {
@@ -58,22 +48,19 @@ function terraform(params) {
   core.endGroup();
 
   core.startGroup('Configure Google Cloud credentials');
-  shell(`printf '%s' '${core.getInput('google_credentials')}' > $GOOGLE_APPLICATION_CREDENTIALS`);
+  await shell('printf', ['%s', core.getInput('google_credentials'), '>', '$GOOGLE_APPLICATION_CREDENTIALS']);
   core.endGroup();
 
   core.startGroup('Setup Terraform CLI');
   core.info(`Working directory: ${terraformDirectory}`);
   core.info('Installing tfswitch:');
   const tfsPath = await tc.downloadTool('https://raw.githubusercontent.com/warrensbox/terraform-switcher/release/install.sh');
-  const tfsInstall = shell(`chmod +x ${tfsPath} && ${tfsPath} -b ${process.env['HOME']}/`);
-  core.info(tfsInstall.stdout);
-  core.info(tfsInstall.stderr);
+  await shell('chmod', ['+x', tfsPath]);
+  await shell(tfsPath, ['-b', `${process.env['HOME']}/`]);
   core.info('Running tfswitch:');
-  const tfs = shell(`${process.env['HOME']}/tfswitch -b ${process.env['HOME']}/terraform`, {
-    cwd: terraformDirectory
+  const tfs = await shell(`${process.env['HOME']}/tfswitch`, ['-b', `${process.env['HOME']}/terraform`], {
+    cwd: terraformDirectory,
   });
-  core.info(tfs.stdout);
-  core.info(tfs.stderr);
   core.endGroup();
   if (tfs.status > 0) {
     core.setFailed(`Failed to determine which terraform version to use [err:${tfs.status}]`);
@@ -81,9 +68,7 @@ function terraform(params) {
   }
 
   core.startGroup('Run terraform version');
-  const tfv = terraform('version');
-  core.info(tfv.stdout);
-  core.info(tfv.stderr);
+  const tfv = await terraform(['version']);
   core.endGroup();
   if (tfv.status > 0) {
     core.info(`status: ${tfv.status}`);
@@ -94,8 +79,7 @@ function terraform(params) {
   }
 
   core.startGroup('Run terraform init');
-  const tfi = terraform('init');
-  core.info(tfi.stdout);
+  const tfi = await terraform(['init']);
   core.endGroup();
   if (tfi.status > 0) {
     tf_init = status_failed;
@@ -106,10 +90,9 @@ function terraform(params) {
   }
 
   core.startGroup('Run terraform fmt');
-  const tffc = terraform('fmt -check');
+  const tffc = await terraform(['fmt', '-check']);
   if (tffc.status > 0) {
-    const tff = terraform('fmt -diff -write=false -list=false');
-    core.info(tff.stdout);
+    await terraform(['fmt', '-diff', '-write=false', '-list=false']);
   }
   core.endGroup();
   if (tffc.status > 0) {
@@ -121,8 +104,7 @@ function terraform(params) {
   }
 
   core.startGroup('Run terraform plan');
-  const tfp = terraform(`plan -lock=${terraformLock} -parallelism=${terraformParallelism} -out=terraform.plan`);
-  core.info(tfp.stdout);
+  const tfp = await terraform(['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-out=terraform.plan']);
   core.endGroup();
   if (tfp.status > 0) {
     tf_plan = status_failed;
@@ -134,8 +116,7 @@ function terraform(params) {
 
   core.startGroup('Run terraform apply');
   if (terraformDoApply === 'true') {
-    const tfa = terraform(`apply -lock=${terraformLock} -parallelism=${terraformParallelism} -auto-approve terraform.plan`);
-    core.info(tfa.stdout);
+    const tfa = await terraform(['apply', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve', 'terraform.plan']);
     core.endGroup();
     if (tfa.status > 0) {
       tf_apply = status_failed;

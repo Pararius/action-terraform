@@ -1,172 +1,7 @@
-module.exports =
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 589:
-/***/ ((__unused_webpack_module, __unused_webpack_exports, __nccwpck_require__) => {
-
-const core = __nccwpck_require__(398);
-const tc = __nccwpck_require__(220);
-const {spawnSync} = __nccwpck_require__(129);
-
-const status_skipped = '﹣';
-const status_success = '✓'
-const status_failed = '✕';
-
-function shell(command, options) {
-  const sh = spawnSync('/bin/sh', ['-c', `${command} 2>&1`], {
-    ...{env: {
-      ...process.env,
-      ...{'GOOGLE_APPLICATION_CREDENTIALS': `${process.env['HOME']}/gcloud.json`}
-    },
-    ...options
-  }});
-  return {
-    status: sh.status,
-    stderr: sh.stderr.toString(),
-    stdout: sh.stdout.toString()
-  }
-}
-
-function terraform(params) {
-  const tf = shell(`${process.env['HOME']}/terraform ${params}`, {
-    cwd: core.getInput('terraform_directory')
-  });
-  return {
-    status: tf.status,
-    stderr: tf.stderr,
-    stdout: tf.stdout
-  }
-}
-
-(async () => {
-  const terraformDirectory = core.getInput('terraform_directory');
-  let terraformDoApply = core.getInput('terraform_do_apply');
-  const terraformLock = core.getInput('terraform_lock');
-  const terraformParallelism = core.getInput('terraform_parallelism');
-
-  let tf_version = '<unknown>';
-  let tf_init = status_skipped;
-  let tf_fmt = status_skipped;
-  let tf_plan = status_skipped;
-  let tf_apply = status_skipped;
-
-  core.startGroup('Sanity checking inputs');
-  if (terraformLock !== 'true' && terraformLock !== 'false') {
-    core.setFailed(`Sanity checks failed. Unknown value for 'terraform_lock': ${terraformLock}`);
-    process.exit(1);
-  }
-  if (/^\d+$/.test(terraformParallelism) === false) {
-    core.setFailed(`Sanity checks failed. Non-integer value for 'terraform_parallelism': ${terraformParallelism}`);
-    process.exit(1);
-  }
-  core.info('Good to go!');
-  core.endGroup();
-
-  core.startGroup('Configure Google Cloud credentials');
-  shell(`printf '%s' '${core.getInput('google_credentials')}' > $GOOGLE_APPLICATION_CREDENTIALS`);
-  core.endGroup();
-
-  core.startGroup('Setup Terraform CLI');
-  core.info(`Working directory: ${terraformDirectory}`);
-  core.info('Installing tfswitch:');
-  const tfsPath = await tc.downloadTool('https://raw.githubusercontent.com/warrensbox/terraform-switcher/release/install.sh');
-  const tfsInstall = shell(`chmod +x ${tfsPath} && ${tfsPath} -b ${process.env['HOME']}/`);
-  core.info(tfsInstall.stdout);
-  core.info(tfsInstall.stderr);
-  core.info('Running tfswitch:');
-  const tfs = shell(`${process.env['HOME']}/tfswitch -b ${process.env['HOME']}/terraform`, {
-    cwd: terraformDirectory
-  });
-  core.info(tfs.stdout);
-  core.info(tfs.stderr);
-  core.endGroup();
-  if (tfs.status > 0) {
-    core.setFailed(`Failed to determine which terraform version to use [err:${tfs.status}]`);
-    process.exit(1);
-  }
-
-  core.startGroup('Run terraform version');
-  const tfv = terraform('version');
-  core.info(tfv.stdout);
-  core.info(tfv.stderr);
-  core.endGroup();
-  if (tfv.status > 0) {
-    core.info(`status: ${tfv.status}`);
-    core.setFailed(`Failed to determine terraform version [err:${tfv.status}]`);
-    terraformDoApply = 'false';
-  } else {
-    tf_version = tfv.stdout.replace(/\r?\n|\r/g, ' ').match(/ v([0-9]+\.[0-9]+\.[0-9]+) /)[1];
-  }
-
-  core.startGroup('Run terraform init');
-  const tfi = terraform('init');
-  core.info(tfi.stdout);
-  core.endGroup();
-  if (tfi.status > 0) {
-    tf_init = status_failed;
-    core.setFailed(`Failed to initialize terraform [err:${tfi.status}]`);
-    terraformDoApply = 'false';
-  } else {
-    tf_init = status_success;
-  }
-
-  core.startGroup('Run terraform fmt');
-  const tffc = terraform('fmt -check');
-  if (tffc.status > 0) {
-    const tff = terraform('fmt -diff -write=false -list=false');
-    core.info(tff.stdout);
-  }
-  core.endGroup();
-  if (tffc.status > 0) {
-    tf_fmt = status_failed;
-    core.setFailed(`Failed to pass terraform formatting checks [err:${tffc.status}]`);
-    terraformDoApply = 'false';
-  } else {
-    tf_fmt = status_success;
-  }
-
-  core.startGroup('Run terraform plan');
-  const tfp = terraform(`plan -out=terraform.plan -lock=${terraformLock} -parallelism=${terraformParallelism}`);
-  core.info(tfp.stdout);
-  core.endGroup();
-  if (tfp.status > 0) {
-    tf_plan = status_failed;
-    core.setFailed(`Failed to prepare the terraform plan [err:${tfp.status}]`);
-    terraformDoApply = 'false';
-  } else {
-    tf_plan = status_success;
-  }
-
-  core.startGroup('Run terraform apply');
-  if (terraformDoApply === 'true') {
-    const tfa = terraform(`apply -auto-approve terraform.plan -lock=${terraformLock} -parallelism=${terraformParallelism}`);
-    core.info(tfa.stdout);
-    core.endGroup();
-    if (tfa.status > 0) {
-      tf_apply = status_failed;
-      core.setFailed(`Failed to apply terraform plan [err:${tfa.status}]`);
-    } else {
-      tf_apply = status_success;
-    }
-  } else {
-    core.info('Skipped');
-    core.endGroup();
-  }
-  core.info('');
-  core.info(`Version: ${tf_version}`);
-  core.info(`Initialization: ${tf_init}`)
-  core.info(`Formatting: ${tf_fmt}`)
-  core.info(`Plan: ${tf_plan}`)
-  core.info(`Apply: ${tf_apply}`)
-})().catch(error => {
-  core.setFailed(error.message);
-});
-
-
-/***/ }),
-
-/***/ 268:
+/***/ 351:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -180,7 +15,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const os = __importStar(__nccwpck_require__(87));
-const utils_1 = __nccwpck_require__(685);
+const utils_1 = __nccwpck_require__(278);
 /**
  * Commands
  *
@@ -252,7 +87,7 @@ function escapeProperty(s) {
 
 /***/ }),
 
-/***/ 398:
+/***/ 186:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -274,9 +109,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const command_1 = __nccwpck_require__(268);
-const file_command_1 = __nccwpck_require__(14);
-const utils_1 = __nccwpck_require__(685);
+const command_1 = __nccwpck_require__(351);
+const file_command_1 = __nccwpck_require__(717);
+const utils_1 = __nccwpck_require__(278);
 const os = __importStar(__nccwpck_require__(87));
 const path = __importStar(__nccwpck_require__(622));
 /**
@@ -498,7 +333,7 @@ exports.getState = getState;
 
 /***/ }),
 
-/***/ 14:
+/***/ 717:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -516,7 +351,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const fs = __importStar(__nccwpck_require__(747));
 const os = __importStar(__nccwpck_require__(87));
-const utils_1 = __nccwpck_require__(685);
+const utils_1 = __nccwpck_require__(278);
 function issueCommand(command, message) {
     const filePath = process.env[`GITHUB_${command}`];
     if (!filePath) {
@@ -534,7 +369,7 @@ exports.issueCommand = issueCommand;
 
 /***/ }),
 
-/***/ 685:
+/***/ 278:
 /***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
@@ -560,11 +395,30 @@ exports.toCommandValue = toCommandValue;
 
 /***/ }),
 
-/***/ 626:
+/***/ 514:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -574,15 +428,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
-    result["default"] = mod;
-    return result;
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const tr = __importStar(__nccwpck_require__(336));
+exports.getExecOutput = exports.exec = void 0;
+const string_decoder_1 = __nccwpck_require__(304);
+const tr = __importStar(__nccwpck_require__(159));
 /**
  * Exec a command.
  * Output will be streamed to the live console.
@@ -607,15 +456,79 @@ function exec(commandLine, args, options) {
     });
 }
 exports.exec = exec;
+/**
+ * Exec a command and get the output.
+ * Output will be streamed to the live console.
+ * Returns promise with the exit code and collected stdout and stderr
+ *
+ * @param     commandLine           command to execute (can include additional args). Must be correctly escaped.
+ * @param     args                  optional arguments for tool. Escaping is handled by the lib.
+ * @param     options               optional exec options.  See ExecOptions
+ * @returns   Promise<ExecOutput>   exit code, stdout, and stderr
+ */
+function getExecOutput(commandLine, args, options) {
+    var _a, _b;
+    return __awaiter(this, void 0, void 0, function* () {
+        let stdout = '';
+        let stderr = '';
+        //Using string decoder covers the case where a mult-byte character is split
+        const stdoutDecoder = new string_decoder_1.StringDecoder('utf8');
+        const stderrDecoder = new string_decoder_1.StringDecoder('utf8');
+        const originalStdoutListener = (_a = options === null || options === void 0 ? void 0 : options.listeners) === null || _a === void 0 ? void 0 : _a.stdout;
+        const originalStdErrListener = (_b = options === null || options === void 0 ? void 0 : options.listeners) === null || _b === void 0 ? void 0 : _b.stderr;
+        const stdErrListener = (data) => {
+            stderr += stderrDecoder.write(data);
+            if (originalStdErrListener) {
+                originalStdErrListener(data);
+            }
+        };
+        const stdOutListener = (data) => {
+            stdout += stdoutDecoder.write(data);
+            if (originalStdoutListener) {
+                originalStdoutListener(data);
+            }
+        };
+        const listeners = Object.assign(Object.assign({}, options === null || options === void 0 ? void 0 : options.listeners), { stdout: stdOutListener, stderr: stdErrListener });
+        const exitCode = yield exec(commandLine, args, Object.assign(Object.assign({}, options), { listeners }));
+        //flush any remaining characters
+        stdout += stdoutDecoder.end();
+        stderr += stderrDecoder.end();
+        return {
+            exitCode,
+            stdout,
+            stderr
+        };
+    });
+}
+exports.getExecOutput = getExecOutput;
 //# sourceMappingURL=exec.js.map
 
 /***/ }),
 
-/***/ 336:
+/***/ 159:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -625,20 +538,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
-    result["default"] = mod;
-    return result;
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.argStringToArray = exports.ToolRunner = void 0;
 const os = __importStar(__nccwpck_require__(87));
 const events = __importStar(__nccwpck_require__(614));
 const child = __importStar(__nccwpck_require__(129));
 const path = __importStar(__nccwpck_require__(622));
-const io = __importStar(__nccwpck_require__(56));
-const ioUtil = __importStar(__nccwpck_require__(298));
+const io = __importStar(__nccwpck_require__(436));
+const ioUtil = __importStar(__nccwpck_require__(962));
+const timers_1 = __nccwpck_require__(213);
 /* eslint-disable @typescript-eslint/unbound-method */
 const IS_WINDOWS = process.platform === 'win32';
 /*
@@ -708,11 +616,12 @@ class ToolRunner extends events.EventEmitter {
                 s = s.substring(n + os.EOL.length);
                 n = s.indexOf(os.EOL);
             }
-            strBuffer = s;
+            return s;
         }
         catch (err) {
             // streaming lines to console is best effort.  Don't fail a build.
             this._debug(`error processing line. Failed with error ${err}`);
+            return '';
         }
     }
     _getSpawnFileName() {
@@ -994,7 +903,7 @@ class ToolRunner extends events.EventEmitter {
             // if the tool is only a file name, then resolve it from the PATH
             // otherwise verify it exists (add extension on Windows if necessary)
             this.toolPath = yield io.which(this.toolPath, true);
-            return new Promise((resolve, reject) => {
+            return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
                 this._debug(`exec tool: ${this.toolPath}`);
                 this._debug('arguments:');
                 for (const arg of this.args) {
@@ -1008,9 +917,12 @@ class ToolRunner extends events.EventEmitter {
                 state.on('debug', (message) => {
                     this._debug(message);
                 });
+                if (this.options.cwd && !(yield ioUtil.exists(this.options.cwd))) {
+                    return reject(new Error(`The cwd: ${this.options.cwd} does not exist!`));
+                }
                 const fileName = this._getSpawnFileName();
                 const cp = child.spawn(fileName, this._getSpawnArgs(optionsNonNull), this._getSpawnOptions(this.options, fileName));
-                const stdbuffer = '';
+                let stdbuffer = '';
                 if (cp.stdout) {
                     cp.stdout.on('data', (data) => {
                         if (this.options.listeners && this.options.listeners.stdout) {
@@ -1019,14 +931,14 @@ class ToolRunner extends events.EventEmitter {
                         if (!optionsNonNull.silent && optionsNonNull.outStream) {
                             optionsNonNull.outStream.write(data);
                         }
-                        this._processLineBuffer(data, stdbuffer, (line) => {
+                        stdbuffer = this._processLineBuffer(data, stdbuffer, (line) => {
                             if (this.options.listeners && this.options.listeners.stdline) {
                                 this.options.listeners.stdline(line);
                             }
                         });
                     });
                 }
-                const errbuffer = '';
+                let errbuffer = '';
                 if (cp.stderr) {
                     cp.stderr.on('data', (data) => {
                         state.processStderr = true;
@@ -1041,7 +953,7 @@ class ToolRunner extends events.EventEmitter {
                                 : optionsNonNull.outStream;
                             s.write(data);
                         }
-                        this._processLineBuffer(data, errbuffer, (line) => {
+                        errbuffer = this._processLineBuffer(data, errbuffer, (line) => {
                             if (this.options.listeners && this.options.listeners.errline) {
                                 this.options.listeners.errline(line);
                             }
@@ -1088,7 +1000,7 @@ class ToolRunner extends events.EventEmitter {
                     }
                     cp.stdin.end(this.options.input);
                 }
-            });
+            }));
         });
     }
 }
@@ -1174,7 +1086,7 @@ class ExecState extends events.EventEmitter {
             this._setResult();
         }
         else if (this.processExited) {
-            this.timeout = setTimeout(ExecState.HandleTimeout, this.delay, this);
+            this.timeout = timers_1.setTimeout(ExecState.HandleTimeout, this.delay, this);
         }
     }
     _debug(message) {
@@ -1218,7 +1130,7 @@ class ExecState extends events.EventEmitter {
 
 /***/ }),
 
-/***/ 68:
+/***/ 925:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -1226,7 +1138,7 @@ class ExecState extends events.EventEmitter {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const http = __nccwpck_require__(605);
 const https = __nccwpck_require__(211);
-const pm = __nccwpck_require__(504);
+const pm = __nccwpck_require__(443);
 let tunnel;
 var HttpCodes;
 (function (HttpCodes) {
@@ -1645,7 +1557,7 @@ class HttpClient {
         if (useProxy) {
             // If using proxy, need tunnel
             if (!tunnel) {
-                tunnel = __nccwpck_require__(238);
+                tunnel = __nccwpck_require__(294);
             }
             const agentOptions = {
                 maxSockets: maxSockets,
@@ -1763,7 +1675,7 @@ exports.HttpClient = HttpClient;
 
 /***/ }),
 
-/***/ 504:
+/***/ 443:
 /***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
@@ -1828,7 +1740,7 @@ exports.checkBypass = checkBypass;
 
 /***/ }),
 
-/***/ 298:
+/***/ 962:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -2037,7 +1949,7 @@ function isUnixExecutable(stats) {
 
 /***/ }),
 
-/***/ 56:
+/***/ 436:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -2062,7 +1974,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const childProcess = __importStar(__nccwpck_require__(129));
 const path = __importStar(__nccwpck_require__(622));
 const util_1 = __nccwpck_require__(669);
-const ioUtil = __importStar(__nccwpck_require__(298));
+const ioUtil = __importStar(__nccwpck_require__(962));
 const exec = util_1.promisify(childProcess.exec);
 /**
  * Copies a file or folder.
@@ -2356,7 +2268,7 @@ function copyFile(srcFile, destFile, force) {
 
 /***/ }),
 
-/***/ 714:
+/***/ 473:
 /***/ (function(module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -2378,8 +2290,8 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const semver = __importStar(__nccwpck_require__(924));
-const core_1 = __nccwpck_require__(398);
+const semver = __importStar(__nccwpck_require__(911));
+const core_1 = __nccwpck_require__(186);
 // needs to be require for core node modules to be mocked
 /* eslint @typescript-eslint/no-require-imports: 0 */
 const os = __nccwpck_require__(87);
@@ -2469,7 +2381,7 @@ exports._readLinuxVersionFile = _readLinuxVersionFile;
 
 /***/ }),
 
-/***/ 226:
+/***/ 279:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -2491,7 +2403,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const core = __importStar(__nccwpck_require__(398));
+const core = __importStar(__nccwpck_require__(186));
 /**
  * Internal class for retries
  */
@@ -2546,7 +2458,7 @@ exports.RetryHelper = RetryHelper;
 
 /***/ }),
 
-/***/ 220:
+/***/ 784:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -2571,20 +2483,20 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const core = __importStar(__nccwpck_require__(398));
-const io = __importStar(__nccwpck_require__(56));
+const core = __importStar(__nccwpck_require__(186));
+const io = __importStar(__nccwpck_require__(436));
 const fs = __importStar(__nccwpck_require__(747));
-const mm = __importStar(__nccwpck_require__(714));
+const mm = __importStar(__nccwpck_require__(473));
 const os = __importStar(__nccwpck_require__(87));
 const path = __importStar(__nccwpck_require__(622));
-const httpm = __importStar(__nccwpck_require__(68));
-const semver = __importStar(__nccwpck_require__(924));
+const httpm = __importStar(__nccwpck_require__(925));
+const semver = __importStar(__nccwpck_require__(911));
 const stream = __importStar(__nccwpck_require__(413));
 const util = __importStar(__nccwpck_require__(669));
-const v4_1 = __importDefault(__nccwpck_require__(776));
-const exec_1 = __nccwpck_require__(626);
+const v4_1 = __importDefault(__nccwpck_require__(824));
+const exec_1 = __nccwpck_require__(514);
 const assert_1 = __nccwpck_require__(357);
-const retry_helper_1 = __nccwpck_require__(226);
+const retry_helper_1 = __nccwpck_require__(279);
 class HTTPError extends Error {
     constructor(httpStatusCode) {
         super(`Unexpected HTTP response: ${httpStatusCode}`);
@@ -3159,7 +3071,7 @@ function _unique(values) {
 
 /***/ }),
 
-/***/ 924:
+/***/ 911:
 /***/ ((module, exports) => {
 
 exports = module.exports = SemVer
@@ -4762,15 +4674,15 @@ function coerce (version, options) {
 
 /***/ }),
 
-/***/ 238:
+/***/ 294:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-module.exports = __nccwpck_require__(176);
+module.exports = __nccwpck_require__(219);
 
 
 /***/ }),
 
-/***/ 176:
+/***/ 219:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -5042,7 +4954,7 @@ exports.debug = debug; // for test
 
 /***/ }),
 
-/***/ 845:
+/***/ 707:
 /***/ ((module) => {
 
 /**
@@ -5075,7 +4987,7 @@ module.exports = bytesToUuid;
 
 /***/ }),
 
-/***/ 3:
+/***/ 859:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 // Unique ID creation requires a high quality random # generator.  In node.js
@@ -5090,11 +5002,11 @@ module.exports = function nodeRNG() {
 
 /***/ }),
 
-/***/ 776:
+/***/ 824:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-var rng = __nccwpck_require__(3);
-var bytesToUuid = __nccwpck_require__(845);
+var rng = __nccwpck_require__(859);
+var bytesToUuid = __nccwpck_require__(707);
 
 function v4(options, buf, offset) {
   var i = buf && offset || 0;
@@ -5130,7 +5042,7 @@ module.exports = v4;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("assert");;
+module.exports = require("assert");
 
 /***/ }),
 
@@ -5138,7 +5050,7 @@ module.exports = require("assert");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("child_process");;
+module.exports = require("child_process");
 
 /***/ }),
 
@@ -5146,7 +5058,7 @@ module.exports = require("child_process");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("crypto");;
+module.exports = require("crypto");
 
 /***/ }),
 
@@ -5154,7 +5066,7 @@ module.exports = require("crypto");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("events");;
+module.exports = require("events");
 
 /***/ }),
 
@@ -5162,7 +5074,7 @@ module.exports = require("events");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("fs");;
+module.exports = require("fs");
 
 /***/ }),
 
@@ -5170,7 +5082,7 @@ module.exports = require("fs");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("http");;
+module.exports = require("http");
 
 /***/ }),
 
@@ -5178,7 +5090,7 @@ module.exports = require("http");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("https");;
+module.exports = require("https");
 
 /***/ }),
 
@@ -5186,7 +5098,7 @@ module.exports = require("https");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("net");;
+module.exports = require("net");
 
 /***/ }),
 
@@ -5194,7 +5106,7 @@ module.exports = require("net");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("os");;
+module.exports = require("os");
 
 /***/ }),
 
@@ -5202,7 +5114,7 @@ module.exports = require("os");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("path");;
+module.exports = require("path");
 
 /***/ }),
 
@@ -5210,7 +5122,23 @@ module.exports = require("path");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("stream");;
+module.exports = require("stream");
+
+/***/ }),
+
+/***/ 304:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("string_decoder");
+
+/***/ }),
+
+/***/ 213:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("timers");
 
 /***/ }),
 
@@ -5218,7 +5146,7 @@ module.exports = require("stream");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("tls");;
+module.exports = require("tls");
 
 /***/ }),
 
@@ -5226,7 +5154,7 @@ module.exports = require("tls");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("util");;
+module.exports = require("util");
 
 /***/ })
 
@@ -5238,8 +5166,9 @@ module.exports = require("util");;
 /******/ 	// The require function
 /******/ 	function __nccwpck_require__(moduleId) {
 /******/ 		// Check if module is in cache
-/******/ 		if(__webpack_module_cache__[moduleId]) {
-/******/ 			return __webpack_module_cache__[moduleId].exports;
+/******/ 		var cachedModule = __webpack_module_cache__[moduleId];
+/******/ 		if (cachedModule !== undefined) {
+/******/ 			return cachedModule.exports;
 /******/ 		}
 /******/ 		// Create a new module (and put it into the cache)
 /******/ 		var module = __webpack_module_cache__[moduleId] = {
@@ -5264,10 +5193,154 @@ module.exports = require("util");;
 /************************************************************************/
 /******/ 	/* webpack/runtime/compat */
 /******/ 	
-/******/ 	__nccwpck_require__.ab = __dirname + "/";/************************************************************************/
-/******/ 	// module exports must be returned from runtime so entry inlining is disabled
-/******/ 	// startup
-/******/ 	// Load entry module and return exports
-/******/ 	return __nccwpck_require__(589);
+/******/ 	if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = __dirname + "/";
+/******/ 	
+/************************************************************************/
+var __webpack_exports__ = {};
+// This entry need to be wrapped in an IIFE because it need to be isolated against other modules in the chunk.
+(() => {
+const core = __nccwpck_require__(186);
+const tc = __nccwpck_require__(784);
+const exec = __nccwpck_require__(514);
+
+const status_skipped = '﹣';
+const status_success = '✓'
+const status_failed = '✕';
+
+async function shell(command, args, options) {
+  options.env.GOOGLE_APPLICATION_CREDENTIALS = `${process.env['HOME']}/gcloud.json`;
+
+  const result = await exec.getExecOutput(command, args, options);
+  return {
+    status: result.exitCode,
+    stderr: result.stderr,
+    stdout: result.stdout,
+  }
+}
+
+async function terraform(args) {
+  return await shell(`${process.env['HOME']}/terraform`, args, {
+    cwd: core.getInput('terraform_directory'),
+  });
+}
+
+(async () => {
+  const terraformDirectory = core.getInput('terraform_directory');
+  let terraformDoApply = core.getInput('terraform_do_apply');
+  const terraformLock = core.getInput('terraform_lock');
+  const terraformParallelism = core.getInput('terraform_parallelism');
+
+  let tf_version = '<unknown>';
+  let tf_init = status_skipped;
+  let tf_fmt = status_skipped;
+  let tf_plan = status_skipped;
+  let tf_apply = status_skipped;
+
+  core.startGroup('Sanity checking inputs');
+  if (terraformLock !== 'true' && terraformLock !== 'false') {
+    core.setFailed(`Sanity checks failed. Unknown value for 'terraform_lock': ${terraformLock}`);
+    process.exit(1);
+  }
+  if (/^\d+$/.test(terraformParallelism) === false) {
+    core.setFailed(`Sanity checks failed. Non-integer value for 'terraform_parallelism': ${terraformParallelism}`);
+    process.exit(1);
+  }
+  core.info('Good to go!');
+  core.endGroup();
+
+  core.startGroup('Configure Google Cloud credentials');
+  await shell('printf', ['%s', core.getInput('google_credentials'), '>', '$GOOGLE_APPLICATION_CREDENTIALS']);
+  core.endGroup();
+
+  core.startGroup('Setup Terraform CLI');
+  core.info(`Working directory: ${terraformDirectory}`);
+  core.info('Installing tfswitch:');
+  const tfsPath = await tc.downloadTool('https://raw.githubusercontent.com/warrensbox/terraform-switcher/release/install.sh');
+  await shell('chmod', ['+x', tfsPath]);
+  await shell(tfsPath, ['-b', `${process.env['HOME']}/`]);
+  core.info('Running tfswitch:');
+  const tfs = await shell(`${process.env['HOME']}/tfswitch`, ['-b', `${process.env['HOME']}/terraform`], {
+    cwd: terraformDirectory,
+  });
+  core.endGroup();
+  if (tfs.status > 0) {
+    core.setFailed(`Failed to determine which terraform version to use [err:${tfs.status}]`);
+    process.exit(1);
+  }
+
+  core.startGroup('Run terraform version');
+  const tfv = await terraform(['version']);
+  core.endGroup();
+  if (tfv.status > 0) {
+    core.info(`status: ${tfv.status}`);
+    core.setFailed(`Failed to determine terraform version [err:${tfv.status}]`);
+    terraformDoApply = 'false';
+  } else {
+    tf_version = tfv.stdout.replace(/\r?\n|\r/g, ' ').match(/ v([0-9]+\.[0-9]+\.[0-9]+) /)[1];
+  }
+
+  core.startGroup('Run terraform init');
+  const tfi = await terraform(['init']);
+  core.endGroup();
+  if (tfi.status > 0) {
+    tf_init = status_failed;
+    core.setFailed(`Failed to initialize terraform [err:${tfi.status}]`);
+    terraformDoApply = 'false';
+  } else {
+    tf_init = status_success;
+  }
+
+  core.startGroup('Run terraform fmt');
+  const tffc = await terraform(['fmt', '-check']);
+  if (tffc.status > 0) {
+    await terraform(['fmt', '-diff', '-write=false', '-list=false']);
+  }
+  core.endGroup();
+  if (tffc.status > 0) {
+    tf_fmt = status_failed;
+    core.setFailed(`Failed to pass terraform formatting checks [err:${tffc.status}]`);
+    terraformDoApply = 'false';
+  } else {
+    tf_fmt = status_success;
+  }
+
+  core.startGroup('Run terraform plan');
+  const tfp = await terraform(['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-out=terraform.plan']);
+  core.endGroup();
+  if (tfp.status > 0) {
+    tf_plan = status_failed;
+    core.setFailed(`Failed to prepare the terraform plan [err:${tfp.status}]`);
+    terraformDoApply = 'false';
+  } else {
+    tf_plan = status_success;
+  }
+
+  core.startGroup('Run terraform apply');
+  if (terraformDoApply === 'true') {
+    const tfa = await terraform(['apply', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve', 'terraform.plan']);
+    core.endGroup();
+    if (tfa.status > 0) {
+      tf_apply = status_failed;
+      core.setFailed(`Failed to apply terraform plan [err:${tfa.status}]`);
+    } else {
+      tf_apply = status_success;
+    }
+  } else {
+    core.info('Skipped');
+    core.endGroup();
+  }
+  core.info('');
+  core.info(`Version: ${tf_version}`);
+  core.info(`Initialization: ${tf_init}`)
+  core.info(`Formatting: ${tf_fmt}`)
+  core.info(`Plan: ${tf_plan}`)
+  core.info(`Apply: ${tf_apply}`)
+})().catch(error => {
+  core.setFailed(error.message);
+});
+
+})();
+
+module.exports = __webpack_exports__;
 /******/ })()
 ;
