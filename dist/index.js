@@ -5207,8 +5207,12 @@ const status_skipped = '﹣';
 const status_success = '✓'
 const status_failed = '✕';
 
-async function shell(command, args, options) {
-  options.env.GOOGLE_APPLICATION_CREDENTIALS = `${process.env['HOME']}/gcloud.json`;
+async function shell(command, args, options = {}) {
+  options.env = {
+    ...process.env,
+    ...options.env,
+    GOOGLE_APPLICATION_CREDENTIALS: `${process.env['HOME']}/gcloud.json`,
+  }
   options.listeners = {
     ...options.listeners,
     debug: (data) => { core.debug(data.toString()) }
