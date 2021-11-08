@@ -5,9 +5,11 @@
     "@actions/tool-cache": "^1.6.1"
   },
   "devDependencies": {
-    "@vercel/ncc": "^0.31.1"
+    "@vercel/ncc": "^0.31.1",
+    "eslint": "^8.2.0"
   },
   "scripts": {
+    "eslint": "eslint",
     "ncc": "ncc"
   }
 }
