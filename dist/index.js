@@ -5202,6 +5202,7 @@ var __webpack_exports__ = {};
 const core = __nccwpck_require__(186);
 const tc = __nccwpck_require__(784);
 const exec = __nccwpck_require__(514);
+const fs = __nccwpck_require__(747);
 
 const status_skipped = '﹣';
 const status_success = '✓'
@@ -5257,7 +5258,7 @@ async function terraform(args) {
   core.endGroup();
 
   core.startGroup('Configure Google Cloud credentials');
-  await shell('printf', ['%s', core.getInput('google_credentials'), '>', '$GOOGLE_APPLICATION_CREDENTIALS']);
+  fs.writeFileSync(`${process.env['HOME']}/gcloud.json`, core.getInput('google_credentials'))
   core.endGroup();
 
   core.startGroup('Setup Terraform CLI');

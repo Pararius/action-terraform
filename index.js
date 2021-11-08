@@ -1,6 +1,7 @@
 const core = require('@actions/core');
 const tc = require('@actions/tool-cache');
 const exec = require('@actions/exec');
+const fs = require('fs');
 
 const status_skipped = '﹣';
 const status_success = '✓'
@@ -56,7 +57,7 @@ async function terraform(args) {
   core.endGroup();
 
   core.startGroup('Configure Google Cloud credentials');
-  await shell('printf', ['%s', core.getInput('google_credentials'), '>', '$GOOGLE_APPLICATION_CREDENTIALS']);
+  fs.writeFileSync(`${process.env['HOME']}/gcloud.json`, core.getInput('google_credentials'))
   core.endGroup();
 
   core.startGroup('Setup Terraform CLI');
