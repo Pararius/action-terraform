@@ -5206,10 +5206,10 @@ const fs = __nccwpck_require__(747);
 const path = __nccwpck_require__(622);
 
 const status_skipped = '﹣';
-const status_success = '✓'
+const status_success = '✓';
 const status_failed = '✕';
 
-const tfswitchPath = `${process.env['HOME']}/tfswitch`
+const tfswitchPath = `${process.env['HOME']}/tfswitch`;
 const terraformPath = `${process.env['HOME']}/terraform`;
 
 async function shell(command, args, options = {}) {
@@ -5217,18 +5217,18 @@ async function shell(command, args, options = {}) {
     ...process.env,
     ...options.env,
     GOOGLE_APPLICATION_CREDENTIALS: `${process.env['HOME']}/gcloud.json`,
-  }
+  };
   options.listeners = {
     ...options.listeners,
-    debug: (data) => { core.debug(data.toString()) }
-  }
+    debug: (data) => { core.debug(data.toString()); },
+  };
 
   const result = await exec.getExecOutput(command, args, options);
   return {
     status: result.exitCode,
     stderr: result.stderr,
     stdout: result.stdout,
-  }
+  };
 }
 
 async function terraform(args) {
@@ -5262,7 +5262,7 @@ async function terraform(args) {
   core.endGroup();
 
   core.startGroup('Configure Google Cloud credentials');
-  fs.writeFileSync(`${process.env['HOME']}/gcloud.json`, core.getInput('google_credentials'))
+  fs.writeFileSync(`${process.env['HOME']}/gcloud.json`, core.getInput('google_credentials'));
   core.endGroup();
 
   core.startGroup('Setup Terraform CLI');
@@ -5343,10 +5343,10 @@ async function terraform(args) {
   }
   core.info('');
   core.info(`Version: ${tf_version}`);
-  core.info(`Initialization: ${tf_init}`)
-  core.info(`Formatting: ${tf_fmt}`)
-  core.info(`Plan: ${tf_plan}`)
-  core.info(`Apply: ${tf_apply}`)
+  core.info(`Initialization: ${tf_init}`);
+  core.info(`Formatting: ${tf_fmt}`);
+  core.info(`Plan: ${tf_plan}`);
+  core.info(`Apply: ${tf_apply}`);
 })().catch(error => {
   core.setFailed(error.message);
 });
