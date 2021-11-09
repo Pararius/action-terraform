@@ -5267,16 +5267,9 @@ async function terraform(args) {
 
   core.startGroup('Setup Terraform CLI');
   core.info(`Working directory: ${terraformDirectory}`);
-  core.info(`Home directory: ${process.env['HOME']}`);
-  core.info('Home directory contents:');
-  await shell('ls', ['-al', process.env['HOME']]);
-  await shell('file', [`${process.env['HOME']}/tfswitch`]);
-  await shell('uname', ['-a']);
   core.info('Installing tfswitch:');
   const tfsPath = await tc.downloadTool('https://raw.githubusercontent.com/warrensbox/terraform-switcher/release/install.sh');
   await shell('sh', [tfsPath, '-b', path.dirname(tfswitchPath)]);
-  core.info('After installig tfswitch:');
-  await shell('ls', ['-al', process.env['HOME']]);
   core.info('Running tfswitch:');
   const tfs = await shell(tfswitchPath, ['-b', terraformPath], {
     cwd: terraformDirectory,
