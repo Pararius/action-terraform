@@ -22,5 +22,5 @@ inputs:
     description: Limit the number of concurrent operations during plan/apply
     default: '10'
 runs:
-  using: node12
+  using: node16
   main: dist/index.js
