@@ -68,7 +68,7 @@ async function terraform(args) {
   core.info(`Working directory: ${terraformDirectory}`);
   core.info('Installing tfswitch:');
   const tfsPath = await tc.downloadTool('https://raw.githubusercontent.com/warrensbox/terraform-switcher/release/install.sh');
-  await shell('bash', [tfsPath, '-b', path.dirname(tfswitchPath)]);
+  await shell('sh', [tfsPath, '-b', path.dirname(tfswitchPath)]);
   core.info('Running tfswitch:');
   const tfs = await shell(tfswitchPath, ['-b', terraformPath], {
     cwd: terraformDirectory,
