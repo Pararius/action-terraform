@@ -9,10 +9,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/setup-node@v2
+
+    - name: Set Node.js version
+      uses: actions/setup-node@v2
       with:
         node-version: 16
-    - run: npm run lint
+
+    - name: Install dependencies
+      run: npm clean-install
+
+    - name: Run code style test
+      run: npm run lint
 
   check-dist:
     runs-on: ubuntu-latest
@@ -24,7 +31,7 @@ jobs:
       with:
         node-version: 16
 
-    - name: install dependencies
+    - name: Install dependencies
       run: npm clean-install
 
     - name: Rebuild the dist/ directory
