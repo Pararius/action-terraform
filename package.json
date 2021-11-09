@@ -9,7 +9,7 @@
     "eslint": "^8.2.0"
   },
   "scripts": {
-    "eslint": "eslint",
-    "ncc": "ncc"
+    "lint": "eslint .",
+    "build": "ncc build index.js"
   }
 }
