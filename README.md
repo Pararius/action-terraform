@@ -36,9 +36,6 @@
 ```yaml
 - uses: Pararius/action-terraform@0.0.9
   name: Terraform
-  env:
-    GITHUB_APP_ID: <APP_ID>
-    GITHUB_APP_INSTALLATION_ID: <INSTALL_ID>
   with:
     google_credentials: ${{ secrets.YOUR_SECRET }}
     terraform_directory: ./terraform/
@@ -50,9 +47,6 @@
 ```yaml
 - uses: Pararius/action-terraform@0.0.9
   name: Terraform
-  env:
-    GITHUB_APP_ID: <APP_ID>
-    GITHUB_APP_INSTALLATION_ID: <INSTALL_ID>
   with:
     google_credentials: ${{ secrets.YOUR_SECRET }}
     terraform_directory: ./terraform/
