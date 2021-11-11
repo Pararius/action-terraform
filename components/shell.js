@@ -1,13 +1,12 @@
 const core = require("@actions/core");
 const {spawnSync} = require("child_process");
 const tc = require("@actions/tool-cache");
-const {runCommand} = require("./shell");
 const fs = require("fs");
 
 exports.installTerraformSwitcher = async function () {
     const tfsPath = await tc.downloadTool('https://raw.githubusercontent.com/warrensbox/terraform-switcher/release/install.sh');
 
-    return runCommand(`chmod +x ${tfsPath} && ${tfsPath} -b ${process.env['HOME']}/`);
+    return exports.runCommand(`chmod +x ${tfsPath} && ${tfsPath} -b ${process.env['HOME']}/`);
 }
 
 exports.prepareGoogleCloudCredentials = function (credentials_json) {
@@ -39,11 +38,11 @@ exports.runTerraformCommand = function (terraformDirectory, params) {
 }
 
 exports.runTerraformSwitcher = function (terraformDirectory) {
-    return runCommand(`${process.env['HOME']}/tfswitch -b ${process.env['HOME']}/terraform`, {
+    return exports.runCommand(`${process.env['HOME']}/tfswitch -b ${process.env['HOME']}/terraform`, {
         cwd: terraformDirectory
     });
 }
 
 exports.setVariable = function (key, value) {
-    return runCommand(`printf '%s' '${key}' > ${value}`);
+    return exports.runCommand(`printf '%s' '${key}' > ${value}`);
 }
