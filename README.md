@@ -1,13 +1,49 @@
-## Requirements
+# Terraform
 
-- ncc (`brew install ncc`)
+[GitHub Action](https://github.com/features/actions) to automate Terraform workflows.
 
+## Usage
 
-## Install
+```yaml
+- uses: Pararius/action-terraform@0.0.9
+  name: Terraform
+  with:
+    # Google credentials, required for accessing state bucket
+    google_credentials: ''
 
-- `npm install`
+    # Location of terraform manifests, relative to the current working directory
+    # Default: ./
+    terraform_directory: ''
 
+    # Whether to run `terraform apply` as last step
+    # Default: 'false'
+    terraform_do_apply: ''
 
-## Build
+    # Limit the number of concurrent operations during plan/apply
+    # Default: '10'
+    terraform_parallelism: ''
+```
 
-After making changes, run `ncc build index.js` to create a compiled version that GitHub Actions will end up using.
+## Example
+
+### Only run terraform plan, without locking the workspace
+
+```yaml
+- uses: Pararius/action-terraform@0.0.9
+  name: Terraform
+  with:
+    google_credentials: ${{ secrets.YOUR_SECRET }}
+    terraform_directory: ./terraform/
+    terraform_do_apply: false
+```
+
+### Also run terraform apply, locking the workspace
+
+```yaml
+- uses: Pararius/action-terraform@0.0.9
+  name: Terraform
+  with:
+    google_credentials: ${{ secrets.YOUR_SECRET }}
+    terraform_directory: ./terraform/
+    terraform_do_apply: true
+```

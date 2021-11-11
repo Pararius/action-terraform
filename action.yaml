@@ -27,5 +27,7 @@ inputs:
     required: false
     description: The name of the workspace that resources should be applied in
 runs:
-  using: node12
-  main: dist/index.js
+  # node16 not available
+  # https://github.com/actions/runner/issues/772
+  using: docker
+  image: Dockerfile
