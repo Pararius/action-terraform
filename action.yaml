@@ -22,5 +22,7 @@ inputs:
     description: Limit the number of concurrent operations during plan/apply
     default: '10'
 runs:
-  using: node12
-  main: dist/index.js
+  # node16 not available
+  # https://github.com/actions/runner/issues/772
+  using: docker
+  image: Dockerfile

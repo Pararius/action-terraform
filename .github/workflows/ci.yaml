@@ -1,0 +1,52 @@
+---
+name: Continuous Integration
+
+on:
+  pull_request:
+
+jobs:
+  code-style:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set Node.js version
+      uses: actions/setup-node@v2
+      with:
+        node-version: 16
+
+    - name: Install dependencies
+      run: npm clean-install
+
+    - name: Run code style test
+      run: npm run lint
+
+  check-dist:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set Node.js version
+      uses: actions/setup-node@v2
+      with:
+        node-version: 16
+
+    - name: Install dependencies
+      run: npm clean-install
+
+    - name: Rebuild the dist/ directory
+      run: npm run build
+
+    - name: Compare the expected and actual dist/ directories
+      run: |
+        git diff --quiet --ignore-space-at-eol dist/ && exit 0
+        echo "Detected uncommitted changes after build.  See status below:"
+        git diff --exit-code dist/
+      id: diff
+
+    # If index.js was different than expected, upload the expected version as an artifact
+    #- uses: actions/upload-artifact@v2
+    #  if: ${{ failure() && steps.diff.conclusion == 'failure' }}
+    #  with:
+    #    name: dist
+    #    path: dist/

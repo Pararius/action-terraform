@@ -3,5 +3,13 @@
     "@actions/core": "^1.2.7",
     "@actions/exec": "^1.1.0",
     "@actions/tool-cache": "^1.6.1"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.31.1",
+    "eslint": "^8.2.0"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "build": "ncc build index.js"
   }
 }

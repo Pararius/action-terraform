@@ -2,32 +2,36 @@ const core = require('@actions/core');
 const tc = require('@actions/tool-cache');
 const exec = require('@actions/exec');
 const fs = require('fs');
+const path = require('path');
 
 const status_skipped = '﹣';
-const status_success = '✓'
+const status_success = '✓';
 const status_failed = '✕';
+
+const tfswitchPath = `${process.env['HOME']}/tfswitch`;
+const terraformPath = `${process.env['HOME']}/terraform`;
 
 async function shell(command, args, options = {}) {
   options.env = {
     ...process.env,
     ...options.env,
     GOOGLE_APPLICATION_CREDENTIALS: `${process.env['HOME']}/gcloud.json`,
-  }
+  };
   options.listeners = {
     ...options.listeners,
-    debug: (data) => { core.debug(data.toString()) }
-  }
+    debug: (data) => { core.debug(data.toString()); },
+  };
 
   const result = await exec.getExecOutput(command, args, options);
   return {
     status: result.exitCode,
     stderr: result.stderr,
     stdout: result.stdout,
-  }
+  };
 }
 
 async function terraform(args) {
-  return await shell(`${process.env['HOME']}/terraform`, args, {
+  return await shell(terraformPath, args, {
     cwd: core.getInput('terraform_directory'),
   });
 }
@@ -57,17 +61,16 @@ async function terraform(args) {
   core.endGroup();
 
   core.startGroup('Configure Google Cloud credentials');
-  fs.writeFileSync(`${process.env['HOME']}/gcloud.json`, core.getInput('google_credentials'))
+  fs.writeFileSync(`${process.env['HOME']}/gcloud.json`, core.getInput('google_credentials'));
   core.endGroup();
 
   core.startGroup('Setup Terraform CLI');
   core.info(`Working directory: ${terraformDirectory}`);
   core.info('Installing tfswitch:');
   const tfsPath = await tc.downloadTool('https://raw.githubusercontent.com/warrensbox/terraform-switcher/release/install.sh');
-  await shell('chmod', ['+x', tfsPath]);
-  await shell(tfsPath, ['-b', `${process.env['HOME']}/`]);
+  await shell('sh', [tfsPath, '-b', path.dirname(tfswitchPath)]);
   core.info('Running tfswitch:');
-  const tfs = await shell(`${process.env['HOME']}/tfswitch`, ['-b', `${process.env['HOME']}/terraform`], {
+  const tfs = await shell(tfswitchPath, ['-b', terraformPath], {
     cwd: terraformDirectory,
   });
   core.endGroup();
@@ -139,10 +142,10 @@ async function terraform(args) {
   }
   core.info('');
   core.info(`Version: ${tf_version}`);
-  core.info(`Initialization: ${tf_init}`)
-  core.info(`Formatting: ${tf_fmt}`)
-  core.info(`Plan: ${tf_plan}`)
-  core.info(`Apply: ${tf_apply}`)
+  core.info(`Initialization: ${tf_init}`);
+  core.info(`Formatting: ${tf_fmt}`);
+  core.info(`Plan: ${tf_plan}`);
+  core.info(`Apply: ${tf_apply}`);
 })().catch(error => {
   core.setFailed(error.message);
 });
