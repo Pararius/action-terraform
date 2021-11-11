@@ -32,7 +32,7 @@ exports.runCommand = function (command, options) {
 
 exports.runTerraformCommand = function (terraformDirectory, params) {
     return exports.runCommand(`${process.env['HOME']}/terraform ${params}`, {
-        cwd: core.getInput('terraform_directory')
+        cwd: terraformDirectory
     });
 }
 
