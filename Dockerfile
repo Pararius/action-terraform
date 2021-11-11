@@ -5,7 +5,6 @@ WORKDIR /app
 COPY . .
 
 RUN npm install
-RUN npm install -g @zeit/ncc
 
 # PRODUCTION-READY STAGE (for dev debugging + if we decide to switch from node12 to docker approach)
 FROM node:12-alpine
@@ -16,7 +15,7 @@ COPY --from=base /app /app
 # working directory
 WORKDIR /app
 
-# for development this can be done with `make compile`
+# for development this can be done with `make build`
 RUN npx ncc build index.js -o dist
 
 # remove dependencies after compilation to reduce image size

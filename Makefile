@@ -4,10 +4,19 @@ help: ## Show this help message.
 	@echo 'targets:'
 	@egrep '^(.+)\:(.+)?\ ##\ (.+)' ${MAKEFILE_LIST} | column -t -c 2 -s ':#'
 
-compile:
-	docker compose run --rm node npx ncc build index.js
+build:
+	docker compose run --rm node npm run-script build
 
-tests:
-	docker compose run --rm node npm test
+install:
+	docker compose run --rm node npm install
 
-.PHONY: compile test
+cs:
+	docker compose run --rm node npm run-script lint
+
+cs-fix:
+	docker compose run --rm node npm run-script lint-fix
+
+test:
+	docker compose run --rm node npm run-script test
+
+.PHONY: build install lint test
