@@ -5,7 +5,7 @@ WORKDIR /app
 COPY . .
 
 RUN npm install
-RUN npm install @zeit/ncc
+RUN npm install -g @zeit/ncc
 
 # PRODUCTION-READY STAGE (for dev debugging + if we decide to switch from node12 to docker approach)
 FROM node:12-alpine

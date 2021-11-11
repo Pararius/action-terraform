@@ -42,6 +42,8 @@ module.exports =
 /******/ 		// Load entry module and return exports
 /******/ 		return __webpack_require__(973);
 /******/ 	};
+/******/ 	// initialize runtime
+/******/ 	runtime(__webpack_require__);
 /******/
 /******/ 	// run startup
 /******/ 	return startup();
@@ -64,6 +66,7 @@ module.exports = require("tls");
 // We use any as a valid input type
 /* eslint-disable @typescript-eslint/no-explicit-any */
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.toCommandProperties = exports.toCommandValue = void 0;
 /**
  * Sanitizes an input into a string so it can be passed into issueCommand safely
  * @param input input to sanitize into a string
@@ -78,6 +81,26 @@ function toCommandValue(input) {
     return JSON.stringify(input);
 }
 exports.toCommandValue = toCommandValue;
+/**
+ *
+ * @param annotationProperties
+ * @returns The command properties to send with the actual annotation command
+ * See IssueCommandProperties: https://github.com/actions/runner/blob/main/src/Runner.Worker/ActionCommandManager.cs#L646
+ */
+function toCommandProperties(annotationProperties) {
+    if (!Object.keys(annotationProperties).length) {
+        return {};
+    }
+    return {
+        title: annotationProperties.title,
+        file: annotationProperties.file,
+        line: annotationProperties.startLine,
+        endLine: annotationProperties.endLine,
+        col: annotationProperties.startColumn,
+        endColumn: annotationProperties.endColumn
+    };
+}
+exports.toCommandProperties = toCommandProperties;
 //# sourceMappingURL=utils.js.map
 
 /***/ }),
@@ -645,6 +668,62 @@ module.exports = require("child_process");
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = __webpack_require__(805);
+
+
+/***/ }),
+
+/***/ 186:
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
+
+const core = __webpack_require__(576);
+const {spawnSync} = __webpack_require__(129);
+const tc = __webpack_require__(454);
+const {runCommand} = __webpack_require__(186);
+const fs = __webpack_require__(747);
+
+exports.installTerraformSwitcher = async function () {
+    const tfsPath = await tc.downloadTool('https://raw.githubusercontent.com/warrensbox/terraform-switcher/release/install.sh');
+
+    return runCommand(`chmod +x ${tfsPath} && ${tfsPath} -b ${process.env['HOME']}/`);
+}
+
+exports.prepareGoogleCloudCredentials = function (credentials_json) {
+    fs.writeFileSync(`${process.env['HOME']}/gcloud.json`, credentials_json);
+}
+
+exports.runCommand = function (command, options) {
+    const sh = spawnSync('/bin/sh', ['-c', `${command} 2>&1`], {
+        ...{
+            env: {
+                ...process.env,
+                ...{'GOOGLE_APPLICATION_CREDENTIALS': `${process.env['HOME']}/gcloud.json`}
+            },
+            ...options
+        }
+    });
+
+    return {
+        status: sh.status,
+        stderr: sh.stderr.toString(),
+        stdout: sh.stdout.toString()
+    }
+}
+
+exports.runTerraformCommand = function (terraformDirectory, params) {
+    return exports.runCommand(`${process.env['HOME']}/terraform ${params}`, {
+        cwd: core.getInput('terraform_directory')
+    });
+}
+
+exports.runTerraformSwitcher = function (terraformDirectory) {
+    return runCommand(`${process.env['HOME']}/tfswitch -b ${process.env['HOME']}/terraform`, {
+        cwd: terraformDirectory
+    });
+}
+
+exports.setVariable = function (key, value) {
+    return runCommand(`printf '%s' '${key}' > ${value}`);
+}
 
 
 /***/ }),
@@ -2264,14 +2343,27 @@ function coerce (version, options) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
-    result["default"] = mod;
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.issue = exports.issueCommand = void 0;
 const os = __importStar(__webpack_require__(87));
 const utils_1 = __webpack_require__(28);
 /**
@@ -2406,6 +2498,72 @@ function checkBypass(reqUrl) {
     return false;
 }
 exports.checkBypass = checkBypass;
+
+
+/***/ }),
+
+/***/ 333:
+/***/ (function(__unusedmodule, exports) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+class BasicCredentialHandler {
+    constructor(username, password) {
+        this.username = username;
+        this.password = password;
+    }
+    prepareRequest(options) {
+        options.headers['Authorization'] =
+            'Basic ' +
+                Buffer.from(this.username + ':' + this.password).toString('base64');
+    }
+    // This handler cannot handle 401
+    canHandleAuthentication(response) {
+        return false;
+    }
+    handleAuthentication(httpClient, requestInfo, objs) {
+        return null;
+    }
+}
+exports.BasicCredentialHandler = BasicCredentialHandler;
+class BearerCredentialHandler {
+    constructor(token) {
+        this.token = token;
+    }
+    // currently implements pre-authorization
+    // TODO: support preAuth = false where it hooks on 401
+    prepareRequest(options) {
+        options.headers['Authorization'] = 'Bearer ' + this.token;
+    }
+    // This handler cannot handle 401
+    canHandleAuthentication(response) {
+        return false;
+    }
+    handleAuthentication(httpClient, requestInfo, objs) {
+        return null;
+    }
+}
+exports.BearerCredentialHandler = BearerCredentialHandler;
+class PersonalAccessTokenCredentialHandler {
+    constructor(token) {
+        this.token = token;
+    }
+    // currently implements pre-authorization
+    // TODO: support preAuth = false where it hooks on 401
+    prepareRequest(options) {
+        options.headers['Authorization'] =
+            'Basic ' + Buffer.from('PAT:' + this.token).toString('base64');
+    }
+    // This handler cannot handle 401
+    canHandleAuthentication(response) {
+        return false;
+    }
+    handleAuthentication(httpClient, requestInfo, objs) {
+        return null;
+    }
+}
+exports.PersonalAccessTokenCredentialHandler = PersonalAccessTokenCredentialHandler;
 
 
 /***/ }),
@@ -3560,6 +3718,52 @@ function copyFile(srcFile, destFile, force) {
 
 /***/ }),
 
+/***/ 482:
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
+
+const {runTerraformCommand} = __webpack_require__(186);
+
+exports.apply = function (terraformDirectory, terraformParallelism) {
+    return runTerraformCommand(terraformDirectory, `apply -auto-approve -parallelism=${terraformParallelism}`);
+}
+
+exports.checkVersion = function (terraformDirectory) {
+    return runTerraformCommand(terraformDirectory,'version');
+}
+
+exports.createWorkspace = function (terraformDirectory, terraformWorkspace) {
+    return runTerraformCommand(terraformDirectory, `workspace new ${terraformWorkspace}`);
+}
+
+exports.deleteWorkspace = function (terraformDirectory, terraformWorkspace) {
+    runTerraformCommand(terraformDirectory, `workspace select default`); // have to switch to different workspace before deleting workspace defined in `terraformWorkspace`
+
+    return runTerraformCommand(terraformDirectory, `workspace delete ${terraformWorkspace}`);
+}
+
+exports.destroy = function (terraformDirectory, terraformParallelism) {
+    return runTerraformCommand(terraformDirectory, `destroy -auto-approve -parallelism=${terraformParallelism}`);
+}
+
+exports.format = function (terraformDirectory) {
+    return runTerraformCommand(terraformDirectory, 'fmt -check');
+}
+
+exports.formatDiff = function () {
+    return runTerraformCommand('fmt -diff -write=false -list=false');
+}
+
+
+exports.init = function (terraformDirectory) {
+    return runTerraformCommand(terraformDirectory, 'init');
+}
+
+exports.selectWorkspace = function (terraformDirectory, terraformWorkspace) {
+    return runTerraformCommand(terraformDirectory, `workspace select ${terraformWorkspace}`);
+}
+
+/***/ }),
+
 /***/ 553:
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
@@ -3774,6 +3978,25 @@ function isUnixExecutable(stats) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -3783,19 +4006,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
-    result["default"] = mod;
-    return result;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getIDToken = exports.getState = exports.saveState = exports.group = exports.endGroup = exports.startGroup = exports.info = exports.notice = exports.warning = exports.error = exports.debug = exports.isDebug = exports.setFailed = exports.setCommandEcho = exports.setOutput = exports.getBooleanInput = exports.getMultilineInput = exports.getInput = exports.addPath = exports.setSecret = exports.exportVariable = exports.ExitCode = void 0;
 const command_1 = __webpack_require__(249);
 const file_command_1 = __webpack_require__(929);
 const utils_1 = __webpack_require__(28);
 const os = __importStar(__webpack_require__(87));
 const path = __importStar(__webpack_require__(622));
+const oidc_utils_1 = __webpack_require__(652);
 /**
  * The code to exit an action
  */
@@ -3857,7 +4075,9 @@ function addPath(inputPath) {
 }
 exports.addPath = addPath;
 /**
- * Gets the value of an input.  The value is also trimmed.
+ * Gets the value of an input.
+ * Unless trimWhitespace is set to false in InputOptions, the value is also trimmed.
+ * Returns an empty string if the value is not defined.
  *
  * @param     name     name of the input to get
  * @param     options  optional. See InputOptions.
@@ -3868,9 +4088,49 @@ function getInput(name, options) {
     if (options && options.required && !val) {
         throw new Error(`Input required and not supplied: ${name}`);
     }
+    if (options && options.trimWhitespace === false) {
+        return val;
+    }
     return val.trim();
 }
 exports.getInput = getInput;
+/**
+ * Gets the values of an multiline input.  Each value is also trimmed.
+ *
+ * @param     name     name of the input to get
+ * @param     options  optional. See InputOptions.
+ * @returns   string[]
+ *
+ */
+function getMultilineInput(name, options) {
+    const inputs = getInput(name, options)
+        .split('\n')
+        .filter(x => x !== '');
+    return inputs;
+}
+exports.getMultilineInput = getMultilineInput;
+/**
+ * Gets the input value of the boolean type in the YAML 1.2 "core schema" specification.
+ * Support boolean input list: `true | True | TRUE | false | False | FALSE` .
+ * The return value is also in boolean type.
+ * ref: https://yaml.org/spec/1.2/spec.html#id2804923
+ *
+ * @param     name     name of the input to get
+ * @param     options  optional. See InputOptions.
+ * @returns   boolean
+ */
+function getBooleanInput(name, options) {
+    const trueValue = ['true', 'True', 'TRUE'];
+    const falseValue = ['false', 'False', 'FALSE'];
+    const val = getInput(name, options);
+    if (trueValue.includes(val))
+        return true;
+    if (falseValue.includes(val))
+        return false;
+    throw new TypeError(`Input does not meet YAML 1.2 "Core Schema" specification: ${name}\n` +
+        `Support boolean input list: \`true | True | TRUE | false | False | FALSE\``);
+}
+exports.getBooleanInput = getBooleanInput;
 /**
  * Sets the value of an output.
  *
@@ -3926,19 +4186,30 @@ exports.debug = debug;
 /**
  * Adds an error issue
  * @param message error issue message. Errors will be converted to string via toString()
+ * @param properties optional properties to add to the annotation.
  */
-function error(message) {
-    command_1.issue('error', message instanceof Error ? message.toString() : message);
+function error(message, properties = {}) {
+    command_1.issueCommand('error', utils_1.toCommandProperties(properties), message instanceof Error ? message.toString() : message);
 }
 exports.error = error;
 /**
- * Adds an warning issue
+ * Adds a warning issue
  * @param message warning issue message. Errors will be converted to string via toString()
+ * @param properties optional properties to add to the annotation.
  */
-function warning(message) {
-    command_1.issue('warning', message instanceof Error ? message.toString() : message);
+function warning(message, properties = {}) {
+    command_1.issueCommand('warning', utils_1.toCommandProperties(properties), message instanceof Error ? message.toString() : message);
 }
 exports.warning = warning;
+/**
+ * Adds a notice issue
+ * @param message notice issue message. Errors will be converted to string via toString()
+ * @param properties optional properties to add to the annotation.
+ */
+function notice(message, properties = {}) {
+    command_1.issueCommand('notice', utils_1.toCommandProperties(properties), message instanceof Error ? message.toString() : message);
+}
+exports.notice = notice;
 /**
  * Writes info to log with console.log.
  * @param message info message
@@ -4011,6 +4282,12 @@ function getState(name) {
     return process.env[`STATE_${name}`] || '';
 }
 exports.getState = getState;
+function getIDToken(aud) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return yield oidc_utils_1.OidcClient.getIDToken(aud);
+    });
+}
+exports.getIDToken = getIDToken;
 //# sourceMappingURL=core.js.map
 
 /***/ }),
@@ -4040,6 +4317,90 @@ module.exports = require("path");
 /***/ (function(module) {
 
 module.exports = require("net");
+
+/***/ }),
+
+/***/ 652:
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.OidcClient = void 0;
+const http_client_1 = __webpack_require__(113);
+const auth_1 = __webpack_require__(333);
+const core_1 = __webpack_require__(576);
+class OidcClient {
+    static createHttpClient(allowRetry = true, maxRetry = 10) {
+        const requestOptions = {
+            allowRetries: allowRetry,
+            maxRetries: maxRetry
+        };
+        return new http_client_1.HttpClient('actions/oidc-client', [new auth_1.BearerCredentialHandler(OidcClient.getRequestToken())], requestOptions);
+    }
+    static getRequestToken() {
+        const token = process.env['ACTIONS_ID_TOKEN_REQUEST_TOKEN'];
+        if (!token) {
+            throw new Error('Unable to get ACTIONS_ID_TOKEN_REQUEST_TOKEN env variable');
+        }
+        return token;
+    }
+    static getIDTokenUrl() {
+        const runtimeUrl = process.env['ACTIONS_ID_TOKEN_REQUEST_URL'];
+        if (!runtimeUrl) {
+            throw new Error('Unable to get ACTIONS_ID_TOKEN_REQUEST_URL env variable');
+        }
+        return runtimeUrl;
+    }
+    static getCall(id_token_url) {
+        var _a;
+        return __awaiter(this, void 0, void 0, function* () {
+            const httpclient = OidcClient.createHttpClient();
+            const res = yield httpclient
+                .getJson(id_token_url)
+                .catch(error => {
+                throw new Error(`Failed to get ID Token. \n 
+        Error Code : ${error.statusCode}\n 
+        Error Message: ${error.result.message}`);
+            });
+            const id_token = (_a = res.result) === null || _a === void 0 ? void 0 : _a.value;
+            if (!id_token) {
+                throw new Error('Response json body do not have ID Token field');
+            }
+            return id_token;
+        });
+    }
+    static getIDToken(audience) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                // New ID Token is requested from action service
+                let id_token_url = OidcClient.getIDTokenUrl();
+                if (audience) {
+                    const encodedAudience = encodeURIComponent(audience);
+                    id_token_url = `${id_token_url}&audience=${encodedAudience}`;
+                }
+                core_1.debug(`ID token url is ${id_token_url}`);
+                const id_token = yield OidcClient.getCall(id_token_url);
+                core_1.setSecret(id_token);
+                return id_token;
+            }
+            catch (error) {
+                throw new Error(`Error message: ${error.message}`);
+            }
+        });
+    }
+}
+exports.OidcClient = OidcClient;
+//# sourceMappingURL=oidc-utils.js.map
 
 /***/ }),
 
@@ -5070,14 +5431,27 @@ class ExecState extends events.EventEmitter {
 "use strict";
 
 // For internal use, subject to change.
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
-    result["default"] = mod;
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.issueCommand = void 0;
 // We use any as a valid input type
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const fs = __importStar(__webpack_require__(747));
@@ -5101,238 +5475,268 @@ exports.issueCommand = issueCommand;
 /***/ }),
 
 /***/ 973:
-/***/ (function(__unusedmodule, __unusedexports, __webpack_require__) {
+/***/ (function(__unusedmodule, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _components_shell__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(186);
+/* harmony import */ var _components_shell__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_components_shell__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _components_terraform__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(482);
+/* harmony import */ var _components_terraform__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_components_terraform__WEBPACK_IMPORTED_MODULE_1__);
+
 
 const core = __webpack_require__(576);
-const tc = __webpack_require__(454);
-const {spawnSync} = __webpack_require__(129);
-
-const status_skipped = '﹣';
-const status_success = '✓'
-const status_failed = '✕';
-
-function shell(command, options) {
-  const sh = spawnSync('/bin/sh', ['-c', `${command} 2>&1`], {
-    ...{env: {
-      ...process.env,
-      ...{'GOOGLE_APPLICATION_CREDENTIALS': `${process.env['HOME']}/gcloud.json`}
-    },
-    ...options
-  }});
-  return {
-    status: sh.status,
-    stderr: sh.stderr.toString(),
-    stdout: sh.stdout.toString()
-  }
-}
-
-function terraform(params) {
-  const tf = shell(`${process.env['HOME']}/terraform ${params}`, {
-    cwd: core.getInput('terraform_directory')
-  });
-  return {
-    status: tf.status,
-    stderr: tf.stderr,
-    stdout: tf.stdout
-  }
-}
+const statusSkipped = '﹣';
+const statusSuccess = '✓'
+const statusFailed = '✕';
 
 (async () => {
-  const terraformDirectory = core.getInput('terraform_directory');
-  let terraformDoApply = core.getInput('terraform_do_apply');
-  const terraformDoDestroy = core.getInput('terraform_do_destroy');
-  const terraformLock = core.getInput('terraform_lock');
-  const terraformParallelism = core.getInput('terraform_parallelism');
-  const terraformWorkspace = core.getInput('terraform_workspace');
+    const terraformDirectory = core.getInput('terraform_directory');
+    const terraformDoApply = core.getInput('terraform_do_apply') === 'true';
+    const terraformDoDestroy = core.getInput('terraform_do_destroy') === 'true';
+    const terraformParallelism = core.getInput('terraform_parallelism');
+    const terraformVariables = core.getInput('terraform_variables');
+    const terraformWorkspace = core.getInput('terraform_workspace');
 
-  let tf_version = '<unknown>';
-  let tf_workspace_selection = status_skipped;
-  let tf_workspace_creation = status_skipped;
-  let tf_init = status_skipped;
-  let tf_fmt = status_skipped;
-  let tf_plan = status_skipped;
-  let tf_apply = status_skipped;
-  let tf_destroy = status_skipped;
-  let tf_workspace_deletion = status_skipped;
+    // changeable states
+    let statusTerraformApply;
+    let statusTerraformDestroy = statusSkipped;
+    let statusTerraformFormat;
+    let statusTerraformInit;
+    let statusTerraformVersion = '<unknown>';
+    let statusTerraformWorkspaceCreation = statusSkipped;
+    let statusTerraformWorkspaceDeletion = statusSkipped;
+    let statusTerraformWorkspaceSelection = statusSkipped;
 
-  core.startGroup('Sanity checking inputs');
-  if (terraformLock !== 'true' && terraformLock !== 'false') {
-    core.setFailed(`Sanity checks failed. Unknown value for 'terraform_lock': ${terraformLock}`);
-    process.exit(1);
-  }
-  if (/^\d+$/.test(terraformParallelism) === false) {
-    core.setFailed(`Sanity checks failed. Non-integer value for 'terraform_parallelism': ${terraformParallelism}`);
-    process.exit(1);
-  }
-  if (terraformDoApply === 'true' && terraformDoDestroy === 'true') {
-    core.setFailed(`Sanity checks failed. Can't apply AND destroy in the same action`);
-    process.exit(1);
-  }
-  core.info('Good to go!');
-  core.endGroup();
-
-  core.startGroup('Configure Google Cloud credentials');
-  shell(`printf '%s' '${core.getInput('google_credentials')}' > $GOOGLE_APPLICATION_CREDENTIALS`);
-  core.endGroup();
-
-  core.startGroup('Setup Terraform CLI');
-  core.info(`Working directory: ${terraformDirectory}`);
-  core.info('Installing tfswitch:');
-  const tfsPath = await tc.downloadTool('https://raw.githubusercontent.com/warrensbox/terraform-switcher/release/install.sh');
-  const tfsInstall = shell(`chmod +x ${tfsPath} && ${tfsPath} -b ${process.env['HOME']}/`);
-  core.info(tfsInstall.stdout);
-  core.info(tfsInstall.stderr);
-  core.info('Running tfswitch:');
-  const tfs = shell(`${process.env['HOME']}/tfswitch -b ${process.env['HOME']}/terraform`, {
-    cwd: terraformDirectory
-  });
-  core.info(tfs.stdout);
-  core.info(tfs.stderr);
-  core.endGroup();
-  if (tfs.status > 0) {
-    core.setFailed(`Failed to determine which terraform version to use [err:${tfs.status}]`);
-    process.exit(1);
-  }
-
-  core.startGroup('Run terraform version');
-  const tfv = terraform('version');
-  core.info(tfv.stdout);
-  core.info(tfv.stderr);
-  core.endGroup();
-  if (tfv.status > 0) {
-    core.info(`status: ${tfv.status}`);
-    core.setFailed(`Failed to determine terraform version [err:${tfv.status}]`);
-    terraformDoApply = 'false';
-  } else {
-    tf_version = tfv.stdout.replace(/\r?\n|\r/g, ' ').match(/ v([0-9]+\.[0-9]+\.[0-9]+) /)[1];
-  }
-
-  if (terraformWorkspace) {
-    core.startGroup('Run terraform workspace selection');
-    const tfws = terraform(`workspace select ${terraformWorkspace}`);
-    core.info(tfws.stdout);
-    core.endGroup();
-    if (tfws.status > 0) {
-      tf_workspace_selection = status_failed;
-
-      core.startGroup('Run terraform workspace creation');
-      const tfwn = terraform(`workspace new ${terraformWorkspace}`);
-      core.info(tfwn.stdout);
-      core.endGroup();
-
-      if (tfwn.status > 0) {
-        tf_workspace_creation = status_failed
-        core.setFailed(`Failed to initialize workspace`);
-
-        terraformDoApply = 'false';
-      } else {
-        tf_workspace_creation = status_success
-      }
-    } else {
-      tf_workspace_selection = status_success;
+    core.startGroup('Sanity checking inputs');
+    if (/^\d+$/.test(terraformParallelism) === false) {
+        core.setFailed(`Sanity checks failed. Non-integer value for 'terraform_parallelism': ${terraformParallelism}`);
+        process.exit(1);
     }
-  }
-
-  core.startGroup('Run terraform init');
-  const tfi = terraform('init');
-  core.info(tfi.stdout);
-  core.endGroup();
-  if (tfi.status > 0) {
-    tf_init = status_failed;
-    core.setFailed(`Failed to initialize terraform [err:${tfi.status}]`);
-    terraformDoApply = 'false';
-  } else {
-    tf_init = status_success;
-  }
-
-  core.startGroup('Run terraform fmt');
-  const tffc = terraform('fmt -check');
-  if (tffc.status > 0) {
-    const tff = terraform('fmt -diff -write=false -list=false');
-    core.info(tff.stdout);
-  }
-  core.endGroup();
-  if (tffc.status > 0) {
-    tf_fmt = status_failed;
-    core.setFailed(`Failed to pass terraform formatting checks [err:${tffc.status}]`);
-    terraformDoApply = 'false';
-  } else {
-    tf_fmt = status_success;
-  }
-
-  core.startGroup('Run terraform plan');
-  const tfp = terraform(`plan -out=terraform.plan -lock=${terraformLock} -parallelism=${terraformParallelism}`);
-  core.info(tfp.stdout);
-  core.endGroup();
-  if (tfp.status > 0) {
-    tf_plan = status_failed;
-    core.setFailed(`Failed to prepare the terraform plan [err:${tfp.status}]`);
-    terraformDoApply = 'false';
-  } else {
-    tf_plan = status_success;
-  }
-
-  core.startGroup('Run terraform apply');
-  if (terraformDoApply === 'true') {
-    const tfa = terraform(`apply -auto-approve terraform.plan -lock=${terraformLock} -parallelism=${terraformParallelism}`);
-    core.info(tfa.stdout);
-    core.endGroup();
-    if (tfa.status > 0) {
-      tf_apply = status_failed;
-      core.setFailed(`Failed to apply terraform plan [err:${tfa.status}]`);
-    } else {
-      tf_apply = status_success;
+    if (terraformDoApply === true && terraformDoDestroy === true) {
+        core.setFailed(`Sanity checks failed. Can't apply AND destroy in the same action`);
+        process.exit(1);
     }
-  } else {
-    core.info('Skipped');
+    core.info('Good to go!');
     core.endGroup();
-  }
 
-  core.startGroup('Run terraform destroy');
-  if (terraformDoDestroy === 'true') {
-    const tfd = terraform(`destroy -auto-approve -lock=${terraformLock} -parallelism=${terraformParallelism}`);
-    core.info(tfd.stdout);
+    core.startGroup('Configure Google Cloud credentials');
+    _components_shell__WEBPACK_IMPORTED_MODULE_0__.prepareGoogleCloudCredentials(core.getInput('google_credentials'));
     core.endGroup();
-    if (tfd.status > 0) {
-      tf_destroy = status_failed;
-      core.setFailed(`Failed to destroy resources [err:${tfd.status}]`);
+
+    core.startGroup('Setup Terraform CLI');
+    core.info(`Working directory: ${terraformDirectory}`);
+    core.info('Installing tfswitch:');
+    const install_terraform_switcher_result = await _components_shell__WEBPACK_IMPORTED_MODULE_0__.installTerraformSwitcher();
+    core.info(install_terraform_switcher_result.stdout);
+    core.info(install_terraform_switcher_result.stderr);
+    core.info('Running tfswitch:');
+    const run_terraform_switcher_result = _components_shell__WEBPACK_IMPORTED_MODULE_0__.runTerraformSwitcher(terraformDirectory);
+    core.info(run_terraform_switcher_result.stdout);
+    core.info(run_terraform_switcher_result.stderr);
+    core.endGroup();
+    if (run_terraform_switcher_result.status > 0) {
+        core.setFailed(`Failed to determine which terraform version to use [err:${run_terraform_switcher_result.status}]`);
+        process.exit(1);
+    }
+
+    /* VERSION CHECK START */
+    core.startGroup('Run terraform version');
+    const check_version_result = _components_terraform__WEBPACK_IMPORTED_MODULE_1__.checkVersion(terraformDirectory);
+    core.info(check_version_result.stdout);
+    core.info(check_version_result.stderr);
+    core.endGroup();
+    if (check_version_result.status > 0) {
+        core.info(`status: ${check_version_result.status}`);
+        core.setFailed(`Failed to determine terraform version [err:${check_version_result.status}]`);
+        process.exit(1);
     } else {
-      tf_destroy = status_success;
+        statusTerraformVersion = check_version_result.stdout.replace(/\r?\n|\r/g, ' ').match(/ v([0-9]+\.[0-9]+\.[0-9]+) /)[1];
+    }
+    /* VERSION CHECK END */
 
-      if (terraformWorkspace) {
-        core.startGroup('Run terraform workspace deletion');
-        terraform(`workspace select default`); // have to switch to different workspace before deleting workspace defined in `terraformWorkspace`
-        const tfwr = terraform(`workspace delete ${terraformWorkspace}`);
-        core.info(tfwr.stdout);
-        core.endGroup();
-        if (tfwr.status > 0) {
-          tf_workspace_deletion = status_failed;
-          core.setFailed(`Failed to delete terraform workspace [err:${tfwr.status}]`);
-        } else {
-          tf_workspace_deletion = status_success;
+    /* VARIABLES START */
+    core.startGroup('Assign terraform variables');
+    if (terraformVariables) {
+        let variables = JSON.parse(terraformVariables)
+        for (let key in variables) {
+            if (variables.hasOwnProperty(key)) {
+                _components_shell__WEBPACK_IMPORTED_MODULE_0__.setVariable(`TF_VAR_${key}`, variables[key])
+                core.info(`Assigned variable ${key} with value ${variables[key]}`);
+            }
         }
-      }
+    } else {
+        core.info('No variables to assign');
     }
-  } else {
-    core.info('Skipped');
     core.endGroup();
-  }
+    /* VARIABLES END */
 
-  core.info('');
-  core.info(`Version: ${tf_version}`);
-  core.info(`Workspace creation: ${tf_workspace_creation}`)
-  core.info(`Workspace selection: ${tf_workspace_selection}`)
-  core.info(`Initialization: ${tf_init}`)
-  core.info(`Formatting: ${tf_fmt}`)
-  core.info(`Plan: ${tf_plan}`)
-  core.info(`Apply: ${tf_apply}`)
-  core.info(`Destroy: ${tf_destroy}`)
-  core.info(`Workspace deletion: ${tf_workspace_deletion}`)
+    /* WORKSPACE SELECTION START */
+    core.startGroup('Run terraform workspace selection');
+    if (terraformWorkspace) {
+        const select_workspace_result = _components_terraform__WEBPACK_IMPORTED_MODULE_1__.selectWorkspace(terraformDirectory, terraformWorkspace);
+        core.info(select_workspace_result.stdout);
+        core.endGroup();
+
+        if (select_workspace_result.status > 0) {
+            statusTerraformWorkspaceSelection = statusFailed;
+
+            core.startGroup('Failed to select workspace (assuming non-existant), creating workspace...');
+            const create_workspace_result = _components_terraform__WEBPACK_IMPORTED_MODULE_1__.createWorkspace(terraformDirectory, terraformWorkspace)
+            core.info(create_workspace_result.stdout);
+            core.endGroup();
+
+            if (create_workspace_result.status > 0) {
+                statusTerraformWorkspaceCreation = statusFailed
+                core.setFailed(`Failed to create workspace`);
+
+                process.exit(1);
+            } else {
+                statusTerraformWorkspaceSelection = statusSuccess
+                statusTerraformWorkspaceCreation = statusSuccess
+            }
+        } else {
+            statusTerraformWorkspaceSelection = statusSuccess;
+        }
+    } else {
+        core.info('Skipped');
+        core.endGroup();
+    }
+    /* WORKSPACE SELECTION END */
+
+    /* INIT START */
+    core.startGroup('Run terraform init');
+    const resultTerraformInit = _components_terraform__WEBPACK_IMPORTED_MODULE_1__.init(terraformDirectory);
+    core.info(resultTerraformInit.stdout);
+    core.endGroup();
+    if (resultTerraformInit.status > 0) {
+        statusTerraformInit = statusFailed;
+        core.setFailed(`Failed to initialize terraform [err:${resultTerraformInit.status}]`);
+        process.exit(1);
+    } else {
+        statusTerraformInit = statusSuccess;
+    }
+    /* INIT END */
+
+    /* FORMATTING START */
+    core.startGroup('Run terraform fmt');
+    const resultTerraformFormat = _components_terraform__WEBPACK_IMPORTED_MODULE_1__.format(terraformDirectory);
+    if (resultTerraformFormat.status > 0) {
+        const format_diff_result = _components_terraform__WEBPACK_IMPORTED_MODULE_1__.formatDiff(terraformDirectory);
+        core.info(format_diff_result.stdout);
+        statusTerraformFormat = statusFailed;
+        core.setFailed(`Failed to pass terraform formatting checks [err:${resultTerraformFormat.status}]`);
+        process.exit(1);
+    } else {
+        statusTerraformFormat = statusSuccess;
+    }
+    core.endGroup();
+    /* FORMATTING END */
+
+    /* APPLY START */
+    core.startGroup('Run terraform apply');
+    if (terraformDoApply === true) {
+        const resultTerraformApply = _components_terraform__WEBPACK_IMPORTED_MODULE_1__.apply(terraformDirectory, terraformParallelism);
+        core.info(resultTerraformApply.stdout);
+        core.endGroup();
+        if (resultTerraformApply.status > 0) {
+          statusTerraformApply = statusFailed;
+          core.setFailed(`Failed to apply terraform plan [err:${resultTerraformApply.status}]`);
+        } else {
+          statusTerraformApply = statusSuccess;
+        }
+    } else {
+        core.info('Skipped');
+        core.endGroup();
+        statusTerraformApply = statusSkipped;
+    }
+    /* APPLY END */
+
+    /* DESTROY START */
+    core.startGroup('Run terraform destroy');
+    if (terraformDoDestroy === true) {
+        const destroy_result = _components_terraform__WEBPACK_IMPORTED_MODULE_1__.destroy(terraformDirectory, terraformParallelism);
+        core.info(destroy_result.stdout);
+        core.endGroup();
+        if (destroy_result.status > 0) {
+            statusTerraformDestroy = statusFailed;
+            core.setFailed(`Failed to destroy resources [err:${destroy_result.status}]`);
+        } else {
+            statusTerraformDestroy = statusSuccess;
+
+            if (terraformWorkspace) {
+                core.startGroup('Run terraform workspace deletion');
+                const deleteWorkspaceResult = _components_terraform__WEBPACK_IMPORTED_MODULE_1__.deleteWorkspace(terraformDirectory, terraformWorkspace);
+                core.info(deleteWorkspaceResult.stdout);
+                core.endGroup();
+
+                if (deleteWorkspaceResult.status > 0) {
+                    statusTerraformWorkspaceDeletion = statusFailed;
+                    core.setFailed(`Failed to delete terraform workspace [err:${deleteWorkspaceResult.status}]`);
+                } else {
+                    statusTerraformWorkspaceDeletion = statusSuccess;
+                }
+            }
+        }
+    } else {
+        core.info('Skipped');
+        core.endGroup();
+    }
+    /* DESTROY END */
+
+    core.info('');
+    core.info(`Version: ${statusTerraformVersion}`);
+    core.info(`Workspace creation: ${statusTerraformWorkspaceCreation}`)
+    core.info(`Workspace selection: ${statusTerraformWorkspaceSelection}`)
+    core.info(`Initialization: ${statusTerraformInit}`)
+    core.info(`Formatting: ${statusTerraformFormat}`)
+    core.info(`Apply: ${statusTerraformApply}`)
+    core.info(`Destroy: ${statusTerraformDestroy}`)
+    core.info(`Workspace deletion: ${statusTerraformWorkspaceDeletion}`)
 })().catch(error => {
-  core.setFailed(error.message);
+    core.setFailed(error.message);
 });
 
 
 /***/ })
 
-/******/ });
+/******/ },
+/******/ function(__webpack_require__) { // webpackRuntimeModules
+/******/ 	"use strict";
+/******/ 
+/******/ 	/* webpack/runtime/make namespace object */
+/******/ 	!function() {
+/******/ 		// define __esModule on exports
+/******/ 		__webpack_require__.r = function(exports) {
+/******/ 			if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
+/******/ 				Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+/******/ 			}
+/******/ 			Object.defineProperty(exports, '__esModule', { value: true });
+/******/ 		};
+/******/ 	}();
+/******/ 	
+/******/ 	/* webpack/runtime/compat get default export */
+/******/ 	!function() {
+/******/ 		// getDefaultExport function for compatibility with non-harmony modules
+/******/ 		__webpack_require__.n = function(module) {
+/******/ 			var getter = module && module.__esModule ?
+/******/ 				function getDefault() { return module['default']; } :
+/******/ 				function getModuleExports() { return module; };
+/******/ 			__webpack_require__.d(getter, 'a', getter);
+/******/ 			return getter;
+/******/ 		};
+/******/ 	}();
+/******/ 	
+/******/ 	/* webpack/runtime/define property getter */
+/******/ 	!function() {
+/******/ 		// define getter function for harmony exports
+/******/ 		var hasOwnProperty = Object.prototype.hasOwnProperty;
+/******/ 		__webpack_require__.d = function(exports, name, getter) {
+/******/ 			if(!hasOwnProperty.call(exports, name)) {
+/******/ 				Object.defineProperty(exports, name, { enumerable: true, get: getter });
+/******/ 			}
+/******/ 		};
+/******/ 	}();
+/******/ 	
+/******/ }
+);
