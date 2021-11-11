@@ -5569,6 +5569,20 @@ const statusFailed = '✕';
     core.endGroup();
     /* VARIABLES END */
 
+    /* INIT START */
+    core.startGroup('Run terraform init');
+    const resultTerraformInit = _components_terraform__WEBPACK_IMPORTED_MODULE_1__.init(terraformDirectory);
+    core.info(resultTerraformInit.stdout);
+    core.endGroup();
+    if (resultTerraformInit.status > 0) {
+        statusTerraformInit = statusFailed;
+        core.setFailed(`Failed to initialize terraform [err:${resultTerraformInit.status}]`);
+        process.exit(1);
+    } else {
+        statusTerraformInit = statusSuccess;
+    }
+    /* INIT END */
+
     /* WORKSPACE SELECTION START */
     core.startGroup('Run terraform workspace selection');
     core.startGroup(`Workspace input: ${terraformWorkspace}`);
@@ -5602,20 +5616,6 @@ const statusFailed = '✕';
         core.endGroup();
     }
     /* WORKSPACE SELECTION END */
-
-    /* INIT START */
-    core.startGroup('Run terraform init');
-    const resultTerraformInit = _components_terraform__WEBPACK_IMPORTED_MODULE_1__.init(terraformDirectory);
-    core.info(resultTerraformInit.stdout);
-    core.endGroup();
-    if (resultTerraformInit.status > 0) {
-        statusTerraformInit = statusFailed;
-        core.setFailed(`Failed to initialize terraform [err:${resultTerraformInit.status}]`);
-        process.exit(1);
-    } else {
-        statusTerraformInit = statusSuccess;
-    }
-    /* INIT END */
 
     /* FORMATTING START */
     core.startGroup('Run terraform fmt');
