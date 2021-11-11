@@ -7,9 +7,10 @@ const statusFailed = '✕';
 
 (async () => {
     const terraformDirectory = core.getInput('terraform_directory');
-    const terraformDoApply = core.getInput('terraform_do_apply');
-    const terraformDoDestroy = core.getInput('terraform_do_destroy');
+    const terraformDoApply = core.getInput('terraform_do_apply') === 'true';
+    const terraformDoDestroy = core.getInput('terraform_do_destroy') === 'true';
     const terraformParallelism = core.getInput('terraform_parallelism');
+    const terraformVariables = core.getInput('terraform_variables');
     const terraformWorkspace = core.getInput('terraform_workspace');
 
     // changeable states
@@ -34,7 +35,9 @@ const statusFailed = '✕';
     core.info('Good to go!');
     core.endGroup();
 
-    shell.prepareGoogleCloudCredentials();
+    core.startGroup('Configure Google Cloud credentials');
+    shell.prepareGoogleCloudCredentials(core.getInput('google_credentials'));
+    core.endGroup();
 
     core.startGroup('Setup Terraform CLI');
     core.info(`Working directory: ${terraformDirectory}`);
@@ -66,6 +69,22 @@ const statusFailed = '✕';
         statusTerraformVersion = check_version_result.stdout.replace(/\r?\n|\r/g, ' ').match(/ v([0-9]+\.[0-9]+\.[0-9]+) /)[1];
     }
     /* VERSION CHECK END */
+
+    /* VARIABLES START */
+    core.startGroup('Assign terraform variables');
+    if (terraformVariables) {
+        let variables = JSON.parse(terraformVariables)
+        for (let key in variables) {
+            if (variables.hasOwnProperty(key)) {
+                shell.setVariable(`TF_VAR_${key}`, variables[key])
+                core.info(`Assigned variable ${key} with value ${variables[key]}`);
+            }
+        }
+    } else {
+        core.info('No variables to assign');
+    }
+    core.endGroup();
+    /* VARIABLES END */
 
     /* WORKSPACE SELECTION START */
     core.startGroup('Run terraform workspace selection');
@@ -131,7 +150,7 @@ const statusFailed = '✕';
 
     /* APPLY START */
     core.startGroup('Run terraform apply');
-    if (terraformDoApply === 'true') {
+    if (terraformDoApply === true) {
         const resultTerraformApply = terraform.apply(terraformDirectory, terraformParallelism);
         core.info(resultTerraformApply.stdout);
         core.endGroup();
@@ -150,7 +169,7 @@ const statusFailed = '✕';
 
     /* DESTROY START */
     core.startGroup('Run terraform destroy');
-    if (terraformDoDestroy === 'true') {
+    if (terraformDoDestroy === true) {
         const destroy_result = terraform.destroy(terraformDirectory, terraformParallelism);
         core.info(destroy_result.stdout);
         core.endGroup();
