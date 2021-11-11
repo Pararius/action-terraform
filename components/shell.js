@@ -43,5 +43,5 @@ exports.runTerraformSwitcher = function (terraformDirectory) {
 }
 
 exports.setVariable = function (key, value) {
-    return exports.runCommand(`printf '%s' '${key}' > ${value}`);
+    process.env[key] = value
 }
