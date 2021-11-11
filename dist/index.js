@@ -5594,7 +5594,7 @@ const statusFailed = '✕';
         if (select_workspace_result.status > 0) {
             statusTerraformWorkspaceSelection = statusFailed;
 
-            core.startGroup('Failed to select workspace (assuming non-existant), creating workspace...');
+            core.startGroup('Failed to select workspace (assuming non-existent), creating workspace...');
             const create_workspace_result = _components_terraform__WEBPACK_IMPORTED_MODULE_1__.createWorkspace(terraformDirectory, terraformWorkspace)
             core.info(create_workspace_result.stdout);
             core.endGroup();
