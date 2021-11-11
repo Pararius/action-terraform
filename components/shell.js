@@ -1,4 +1,3 @@
-const core = require("@actions/core");
 const {spawnSync} = require("child_process");
 const tc = require("@actions/tool-cache");
 const fs = require("fs");

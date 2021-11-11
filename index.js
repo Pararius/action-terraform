@@ -88,6 +88,7 @@ const statusFailed = '✕';
 
     /* WORKSPACE SELECTION START */
     core.startGroup('Run terraform workspace selection');
+    core.startGroup(`Workspace input: ${terraformWorkspace}`);
     if (terraformWorkspace) {
         const select_workspace_result = terraform.selectWorkspace(terraformDirectory, terraformWorkspace);
         core.info(select_workspace_result.stdout);

@@ -675,7 +675,6 @@ module.exports = __webpack_require__(805);
 /***/ 186:
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
-const core = __webpack_require__(576);
 const {spawnSync} = __webpack_require__(129);
 const tc = __webpack_require__(454);
 const fs = __webpack_require__(747);
@@ -5572,6 +5571,7 @@ const statusFailed = '✕';
 
     /* WORKSPACE SELECTION START */
     core.startGroup('Run terraform workspace selection');
+    core.startGroup(`Workspace input: ${terraformWorkspace}`);
     if (terraformWorkspace) {
         const select_workspace_result = _components_terraform__WEBPACK_IMPORTED_MODULE_1__.selectWorkspace(terraformDirectory, terraformWorkspace);
         core.info(select_workspace_result.stdout);
