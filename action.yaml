@@ -13,6 +13,10 @@ inputs:
     required: false
     description: Whether to run `terraform apply` as last step
     default: 'false'
+  terraform_do_destroy:
+    required: false
+    description: Whether to run `terraform destroy` (`terraform_do_apply` and `terraform_do_destroy` can not both be true)
+    default: 'false'
   terraform_lock:
     required: false
     description: Whether to (try to) lock the state during plan/apply
@@ -21,6 +25,12 @@ inputs:
     required: false
     description: Limit the number of concurrent operations during plan/apply
     default: '10'
+  terraform_variables:
+    required: false
+    description: 'A JSON string containing variables that should be passed to terraform. For example: {"my_var": "my_value"}'
+  terraform_workspace:
+    required: false
+    description: The name of the workspace that resources should be applied in
 runs:
   # node16 not available
   # https://github.com/actions/runner/issues/772
