@@ -53,7 +53,7 @@ async function terraform(args) {
   let tf_destroy = status_skipped;
   let tf_workspace_selection = status_skipped;
   let tf_workspace_creation = status_skipped;
-  let tf_workspace_delete = status_skipped;
+  let tf_workspace_deletion = status_skipped;
 
   core.startGroup('Sanity checking inputs');
   if (terraformLock !== 'true' && terraformLock !== 'false') {
@@ -223,10 +223,10 @@ async function terraform(args) {
         core.endGroup();
 
         if (tfwd.status > 0) {
-          tf_workspace_delete = status_failed;
+          tf_workspace_deletion = status_failed;
           core.setFailed(`Failed to delete terraform workspace [err:${tfwd.status}]`);
         } else {
-          tf_workspace_delete = status_success;
+          tf_workspace_deletion = status_success;
         }
       }
     }
@@ -245,7 +245,7 @@ async function terraform(args) {
   core.info(`Plan: ${tf_plan}`);
   core.info(`Apply: ${tf_apply}`);
   core.info(`Destroy: ${tf_destroy}`);
-  core.info(`Workspace deletion: ${tf_workspace_delete}`);
+  core.info(`Workspace deletion: ${tf_workspace_deletion}`);
 })().catch(error => {
   core.setFailed(error.message);
 });
