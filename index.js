@@ -21,6 +21,7 @@ async function shell(command, args, options = {}) {
     ...options.listeners,
     debug: (data) => { core.debug(data.toString()); },
   };
+  options.ignoreReturnCode ??= true;
 
   const result = await exec.getExecOutput(command, args, options);
   return {
