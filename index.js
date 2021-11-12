@@ -132,20 +132,20 @@ async function terraform(args) {
   core.startGroup('Run terraform workspace selection');
   core.startGroup(`Workspace input: ${terraformWorkspace}`);
   if (terraformWorkspace) {
-    const select_workspace_result = terraform.selectWorkspace(terraformDirectory, terraformWorkspace);
-    core.info(select_workspace_result.stdout);
+    const tfws = await terraform(['workspace', 'select', terraformWorkspace]);
+    core.info(tfws.stdout);
     core.endGroup();
 
-    if (select_workspace_result.status > 0) {
+    if (tfws.status > 0) {
       tf_workspace_selection = status_failed;
 
       core.startGroup('Failed to select workspace (assuming non-existent), creating workspace...');
-      const create_workspace_result = terraform.createWorkspace(terraformDirectory, terraformWorkspace);
-      core.info(create_workspace_result.stdout);
+      const tfwc = await terraform(['workspace', 'new', terraformWorkspace]);
+      core.info(tfwc.stdout);
       core.endGroup();
 
-      if (create_workspace_result.status > 0) {
-        tf_workspace_creation = statusFailed;
+      if (tfwc.status > 0) {
+        tf_workspace_creation = status_failed;
         core.setFailed('Failed to create workspace');
 
         process.exit(1);
