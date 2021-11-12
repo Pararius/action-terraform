@@ -118,7 +118,7 @@ async function terraform(args) {
     let variables = JSON.parse(terraformVariables);
     for (let key in variables) {
       if (Object.prototype.hasOwnProperty.call(variables, key)) {
-        shell.setVariable(`TF_VAR_${key}`, variables[key]);
+        process.env[`TF_VAR_${key}`] = variables[key];
         core.info(`Assigned variable ${key} with value ${variables[key]}`);
       }
     }
