@@ -215,7 +215,7 @@ async function terraform(args) {
     } else {
       tf_destroy = status_success;
 
-      if (terraformWorkspace && terraformWorkspace !== 'default') {
+      if (terraformWorkspace && terraformWorkspace !== 'default' && !terraformTargets) {
         core.startGroup('Run terraform workspace deletion');
         await terraform(['workspace', 'select', 'default']); // have to switch to different workspace before deleting workspace defined in `terraformWorkspace`
         const tfwd = await terraform(['workspace', 'delete', terraformWorkspace]); // have to switch to different workspace before deleting workspace defined in `terraformWorkspace`
