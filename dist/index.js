@@ -5240,9 +5240,9 @@ async function terraform(args) {
 
 (async () => {
   const terraformDirectory = core.getInput('terraform_directory');
-  let terraformDoApply = core.getInput('terraform_do_apply') === 'true';
-  let terraformDoDestroy = core.getInput('terraform_do_destroy') === 'true';
-  const terraformLock = core.getInput('terraform_lock');
+  let terraformDoApply = core.getBooleanInput('terraform_do_apply');
+  let terraformDoDestroy = core.getBooleanInput('terraform_do_destroy');
+  const terraformLock = core.getBooleanInput('terraform_lock');
   const terraformParallelism = core.getInput('terraform_parallelism');
   const terraformVariables = core.getInput('terraform_variables');
   const terraformWorkspace = core.getInput('terraform_workspace');
@@ -5258,10 +5258,6 @@ async function terraform(args) {
   let tf_workspace_deletion = status_skipped;
 
   core.startGroup('Sanity checking inputs');
-  if (terraformLock !== 'true' && terraformLock !== 'false') {
-    core.setFailed(`Sanity checks failed. Unknown value for 'terraform_lock': ${terraformLock}`);
-    process.exit(1);
-  }
   if (/^\d+$/.test(terraformParallelism) === false) {
     core.setFailed(`Sanity checks failed. Non-integer value for 'terraform_parallelism': ${terraformParallelism}`);
     process.exit(1);
