@@ -27,7 +27,7 @@ inputs:
     default: '10'
   terraform_targets:
     required: false
-    description: 'A comma separated string containing targets that should be passed to terraform. For example: foo,bar["one"],bar["two"]'
+    description: A multiline string containing targets that should be passed to terraform (one per line)
   terraform_variables:
     required: false
     description: 'A JSON string containing variables that should be passed to terraform. For example: {"my_var": "my_value"}'
