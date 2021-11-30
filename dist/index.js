@@ -5244,6 +5244,10 @@ async function terraform(args) {
   let terraformDoDestroy = core.getBooleanInput('terraform_do_destroy');
   const terraformLock = core.getBooleanInput('terraform_lock');
   const terraformParallelism = core.getInput('terraform_parallelism');
+  const terraformTargets = core.getInput('terraform_targets')
+    .split(',')
+    .filter(_str => _str.trim() !== '')
+    .map(_str => `-target '${_str.trim()}'`);
   const terraformVariables = core.getInput('terraform_variables');
   const terraformWorkspace = core.getInput('terraform_workspace');
 
@@ -5375,7 +5379,7 @@ async function terraform(args) {
   }
 
   core.startGroup('Run terraform plan');
-  const tfp = await terraform(['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-out=terraform.plan']);
+  const tfp = await terraform(['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-out=terraform.plan'].concat(terraformTargets));
   core.endGroup();
   if (tfp.status > 0) {
     tf_plan = status_failed;
@@ -5387,7 +5391,7 @@ async function terraform(args) {
 
   core.startGroup('Run terraform apply');
   if (terraformDoApply === true) {
-    const tfa = await terraform(['apply', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve', 'terraform.plan']);
+    const tfa = await terraform(['apply', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve', 'terraform.plan'].concat(terraformTargets));
     core.endGroup();
     if (tfa.status > 0) {
       tf_apply = status_failed;
@@ -5403,7 +5407,7 @@ async function terraform(args) {
   /* DESTROY START */
   core.startGroup('Run terraform destroy');
   if (terraformDoDestroy === true) {
-    const tfd = await terraform(['destroy', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve']);
+    const tfd = await terraform(['destroy', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve'].concat(terraformTargets));
     core.info(tfd.stdout);
     core.endGroup();
     if (tfd.status > 0) {

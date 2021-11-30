@@ -25,6 +25,9 @@ inputs:
     required: false
     description: Limit the number of concurrent operations during plan/apply
     default: '10'
+  terraform_targets:
+    required: false
+    description: 'A comma separated string containing targets that should be passed to terraform. For example: foo,bar["one"],bar["two"]'
   terraform_variables:
     required: false
     description: 'A JSON string containing variables that should be passed to terraform. For example: {"my_var": "my_value"}'
