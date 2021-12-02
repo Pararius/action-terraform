@@ -43,7 +43,7 @@ async function terraform(args) {
   let terraformDoDestroy = core.getBooleanInput('terraform_do_destroy');
   const terraformLock = core.getBooleanInput('terraform_lock');
   const terraformParallelism = core.getInput('terraform_parallelism');
-  const terraformTargets = core.getMultilineInput('terraform_targets');
+  const terraformTargets = core.getMultilineInput('terraform_targets').map((target) => `-target '${target}'`);
   const terraformVariables = core.getInput('terraform_variables');
   const terraformWorkspace = core.getInput('terraform_workspace');
 
