@@ -5645,8 +5645,10 @@ async function terraform(args) {
     tf_fmt = status_success;
   }
 
+  const terraformTargetArgs = terraformTargets.map((target) => `-target '${target}'`);
+
   core.startGroup('Run terraform plan');
-  const tfp = await terraform(['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-out=terraform.plan'].concat(terraformTargets));
+  const tfp = await terraform(['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-out=terraform.plan'].concat(terraformTargetArgs));
   core.endGroup();
   if (tfp.status > 0) {
     tf_plan = status_failed;
@@ -5658,7 +5660,7 @@ async function terraform(args) {
 
   core.startGroup('Run terraform apply');
   if (terraformDoApply === true) {
-    const tfa = await terraform(['apply', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve', 'terraform.plan'].concat(terraformTargets));
+    const tfa = await terraform(['apply', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve', 'terraform.plan'].concat(terraformTargetArgs));
     core.endGroup();
     if (tfa.status > 0) {
       tf_apply = status_failed;
@@ -5674,7 +5676,7 @@ async function terraform(args) {
   /* DESTROY START */
   core.startGroup('Run terraform destroy');
   if (terraformDoDestroy === true) {
-    const tfd = await terraform(['destroy', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve'].concat(terraformTargets));
+    const tfd = await terraform(['destroy', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve'].concat(terraformTargetArgs));
     core.info(tfd.stdout);
     core.endGroup();
     if (tfd.status > 0) {
@@ -5683,7 +5685,7 @@ async function terraform(args) {
     } else {
       tf_destroy = status_success;
 
-      if (terraformWorkspace && terraformWorkspace !== 'default' && !terraformTargets) {
+      if (terraformWorkspace && terraformWorkspace !== 'default' && !terraformTargetArgs) {
         core.startGroup('Run terraform workspace deletion');
         await terraform(['workspace', 'select', 'default']); // have to switch to different workspace before deleting workspace defined in `terraformWorkspace`
         const tfwd = await terraform(['workspace', 'delete', terraformWorkspace]); // have to switch to different workspace before deleting workspace defined in `terraformWorkspace`
