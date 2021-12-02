@@ -39,10 +39,11 @@ async function terraform(args) {
 
 (async () => {
   const terraformDirectory = core.getInput('terraform_directory');
-  let terraformDoApply = core.getInput('terraform_do_apply') === 'true';
-  let terraformDoDestroy = core.getInput('terraform_do_destroy') === 'true';
-  const terraformLock = core.getInput('terraform_lock');
+  let terraformDoApply = core.getBooleanInput('terraform_do_apply');
+  let terraformDoDestroy = core.getBooleanInput('terraform_do_destroy');
+  const terraformLock = core.getBooleanInput('terraform_lock');
   const terraformParallelism = core.getInput('terraform_parallelism');
+  const terraformTargets = core.getMultilineInput('terraform_targets');
   const terraformVariables = core.getInput('terraform_variables');
   const terraformWorkspace = core.getInput('terraform_workspace');
 
@@ -57,10 +58,6 @@ async function terraform(args) {
   let tf_workspace_deletion = status_skipped;
 
   core.startGroup('Sanity checking inputs');
-  if (terraformLock !== 'true' && terraformLock !== 'false') {
-    core.setFailed(`Sanity checks failed. Unknown value for 'terraform_lock': ${terraformLock}`);
-    process.exit(1);
-  }
   if (/^\d+$/.test(terraformParallelism) === false) {
     core.setFailed(`Sanity checks failed. Non-integer value for 'terraform_parallelism': ${terraformParallelism}`);
     process.exit(1);
@@ -178,7 +175,7 @@ async function terraform(args) {
   }
 
   core.startGroup('Run terraform plan');
-  const tfp = await terraform(['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-out=terraform.plan']);
+  const tfp = await terraform(['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-out=terraform.plan'].concat(terraformTargets));
   core.endGroup();
   if (tfp.status > 0) {
     tf_plan = status_failed;
@@ -190,7 +187,7 @@ async function terraform(args) {
 
   core.startGroup('Run terraform apply');
   if (terraformDoApply === true) {
-    const tfa = await terraform(['apply', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve', 'terraform.plan']);
+    const tfa = await terraform(['apply', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve', 'terraform.plan'].concat(terraformTargets));
     core.endGroup();
     if (tfa.status > 0) {
       tf_apply = status_failed;
@@ -206,7 +203,7 @@ async function terraform(args) {
   /* DESTROY START */
   core.startGroup('Run terraform destroy');
   if (terraformDoDestroy === true) {
-    const tfd = await terraform(['destroy', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve']);
+    const tfd = await terraform(['destroy', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve'].concat(terraformTargets));
     core.info(tfd.stdout);
     core.endGroup();
     if (tfd.status > 0) {
@@ -215,7 +212,7 @@ async function terraform(args) {
     } else {
       tf_destroy = status_success;
 
-      if (terraformWorkspace && terraformWorkspace !== 'default') {
+      if (terraformWorkspace && terraformWorkspace !== 'default' && !terraformTargets) {
         core.startGroup('Run terraform workspace deletion');
         await terraform(['workspace', 'select', 'default']); // have to switch to different workspace before deleting workspace defined in `terraformWorkspace`
         const tfwd = await terraform(['workspace', 'delete', terraformWorkspace]); // have to switch to different workspace before deleting workspace defined in `terraformWorkspace`
