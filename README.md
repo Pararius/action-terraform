@@ -19,14 +19,31 @@
     # Default: 'false'
     terraform_do_apply: ''
 
+    # Whether to run `terraform destroy` (`terraform_do_apply` and
+    # `terraform_do_destroy` can not both be true)
+    # Default: 'false'
+    terraform_do_destroy: ''
+
     # Whether to (try to) lock the state during plan/apply. Reccommended when
-    # terraform_do_apply is set to 'true'
+    # terraform_do_apply or terraform_do_destroy is set to 'true'
     # Default: 'false'
     terraform_lock: ''
 
     # Limit the number of concurrent operations during plan/apply
     # Default: '10'
     terraform_parallelism: ''
+
+    # A multiline string containing targets that should be passed to terraform
+    # (one per line)
+    terraform_targets: ''
+
+    # A JSON string containing variables that should be passed to terraform.
+    # For example: {"my_var": "my_value"}
+    terraform_variables: ''
+
+    # The name of the workspace that resources should be applied in. When left
+    # empty, the terraform default is used
+    terraform_workspace: ''
 ```
 
 ## Example
