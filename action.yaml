@@ -25,6 +25,10 @@ inputs:
     required: false
     description: Limit the number of concurrent operations during plan/apply
     default: '10'
+  terraform_plan_destroy:
+    required: false
+    description: Whether to run `terraform plan -destroy` instead of `terraform plan`
+    default: 'false'
   terraform_targets:
     required: false
     description: A multiline string containing targets that should be passed to terraform (one per line)
