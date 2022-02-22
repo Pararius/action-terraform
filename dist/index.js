@@ -1,265 +1,7 @@
-module.exports =
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 589:
-/***/ ((__unused_webpack_module, __unused_webpack_exports, __nccwpck_require__) => {
-
-const core = __nccwpck_require__(398);
-const tc = __nccwpck_require__(220);
-const exec = __nccwpck_require__(626);
-const fs = __nccwpck_require__(747);
-const path = __nccwpck_require__(622);
-
-const status_skipped = '﹣';
-const status_success = '✓';
-const status_failed = '✕';
-
-const tfswitchPath = `${process.env['HOME']}/tfswitch`;
-const terraformPath = `${process.env['HOME']}/terraform`;
-
-async function shell(command, args, options = {}) {
-  options.env = {
-    ...process.env,
-    ...options.env,
-    GOOGLE_APPLICATION_CREDENTIALS: `${process.env['HOME']}/gcloud.json`,
-  };
-  options.listeners = {
-    ...options.listeners,
-    debug: (data) => { core.debug(data.toString()); },
-  };
-  options.ignoreReturnCode ??= true;
-
-  const result = await exec.getExecOutput(command, args, options);
-  return {
-    status: result.exitCode,
-    stderr: result.stderr,
-    stdout: result.stdout,
-  };
-}
-
-async function terraform(args) {
-  return await shell(terraformPath, args, {
-    cwd: core.getInput('terraform_directory'),
-  });
-}
-
-(async () => {
-  const terraformDirectory = core.getInput('terraform_directory');
-  let terraformDoApply = core.getBooleanInput('terraform_do_apply');
-  let terraformDoDestroy = core.getBooleanInput('terraform_do_destroy');
-  const terraformLock = core.getBooleanInput('terraform_lock');
-  const terraformParallelism = core.getInput('terraform_parallelism');
-  const terraformPlanDestroy = (terraformDoDestroy || core.getBooleanInput('terraform_plan_destroy')) ? '-destroy' : '';
-  const terraformTargets = core.getMultilineInput('terraform_targets').map((target) => `-target=${target}`);
-  const terraformVariables = core.getInput('terraform_variables');
-  const terraformWorkspace = core.getInput('terraform_workspace');
-
-  let tf_version = '<unknown>';
-  let tf_init = status_skipped;
-  let tf_fmt = status_skipped;
-  let tf_plan = status_skipped;
-  let tf_apply = status_skipped;
-  let tf_destroy = status_skipped;
-  let tf_workspace_selection = status_skipped;
-  let tf_workspace_creation = status_skipped;
-  let tf_workspace_deletion = status_skipped;
-
-  core.startGroup('Sanity checking inputs');
-  if (/^\d+$/.test(terraformParallelism) === false) {
-    core.setFailed(`Sanity checks failed. Non-integer value for 'terraform_parallelism': ${terraformParallelism}`);
-    process.exit(1);
-  }
-  if (terraformDoApply === true && terraformDoDestroy === true) {
-    core.setFailed('Sanity checks failed. Can\'t apply AND destroy in the same action');
-    process.exit(1);
-  }
-  core.info('Good to go!');
-  core.endGroup();
-
-  core.startGroup('Configure Google Cloud credentials');
-  fs.writeFileSync(`${process.env['HOME']}/gcloud.json`, core.getInput('google_credentials'));
-  core.endGroup();
-
-  core.startGroup('Setup Terraform CLI');
-  core.info(`Working directory: ${terraformDirectory}`);
-  core.info('Installing tfswitch:');
-  const tfsPath = await tc.downloadTool('https://raw.githubusercontent.com/warrensbox/terraform-switcher/release/install.sh');
-  await shell('sh', [tfsPath, '-b', path.dirname(tfswitchPath)]);
-  core.info('Running tfswitch:');
-  const tfs = await shell(tfswitchPath, ['-b', terraformPath], {
-    cwd: terraformDirectory,
-  });
-  core.endGroup();
-  if (tfs.status > 0) {
-    core.setFailed(`Failed to determine which terraform version to use [err:${tfs.status}]`);
-    process.exit(1);
-  }
-
-  core.startGroup('Run terraform version');
-  const tfv = await terraform(['version']);
-  core.endGroup();
-  if (tfv.status > 0) {
-    core.info(`status: ${tfv.status}`);
-    core.setFailed(`Failed to determine terraform version [err:${tfv.status}]`);
-    terraformDoApply = false;
-  } else {
-    tf_version = tfv.stdout.replace(/\r?\n|\r/g, ' ').match(/ v([0-9]+\.[0-9]+\.[0-9]+) /)[1];
-  }
-
-  core.startGroup('Run terraform init');
-  const tfi = await terraform(['init']);
-  core.endGroup();
-  if (tfi.status > 0) {
-    tf_init = status_failed;
-    core.setFailed(`Failed to initialize terraform [err:${tfi.status}]`);
-    terraformDoApply = false;
-  } else {
-    tf_init = status_success;
-  }
-
-  /* VARIABLES START */
-  core.startGroup('Assign terraform variables');
-  if (terraformVariables) {
-    const variables = JSON.parse(terraformVariables);
-    for (let key in variables) {
-      if (Object.prototype.hasOwnProperty.call(variables, key)) {
-        process.env[`TF_VAR_${key}`] = variables[key];
-        core.info(`Assigned variable ${key} with value ${variables[key]}`);
-      }
-    }
-  } else {
-    core.info('No variables to assign');
-  }
-  core.endGroup();
-  /* VARIABLES END */
-
-  /* WORKSPACE SELECTION START */
-  core.startGroup('Run terraform workspace selection');
-  core.startGroup(`Workspace input: ${terraformWorkspace}`);
-  if (terraformWorkspace) {
-    const tfws = await terraform(['workspace', 'select', terraformWorkspace]);
-    core.info(tfws.stdout);
-    core.endGroup();
-
-    if (tfws.status > 0) {
-      tf_workspace_selection = status_failed;
-
-      core.startGroup('Failed to select workspace (assuming non-existent), creating workspace...');
-      const tfwc = await terraform(['workspace', 'new', terraformWorkspace]);
-      core.info(tfwc.stdout);
-      core.endGroup();
-
-      if (tfwc.status > 0) {
-        tf_workspace_creation = status_failed;
-        core.setFailed('Failed to create workspace');
-
-        process.exit(1);
-      } else {
-        tf_workspace_selection = status_success;
-        tf_workspace_creation = status_success;
-      }
-    } else {
-      tf_workspace_selection = status_success;
-    }
-  } else {
-    core.info('Skipped');
-    core.endGroup();
-  }
-  /* WORKSPACE SELECTION END */
-
-  core.startGroup('Run terraform fmt');
-  const tffc = await terraform(['fmt', '-check']);
-  if (tffc.status > 0) {
-    await terraform(['fmt', '-diff', '-write=false', '-list=false']);
-  }
-  core.endGroup();
-  if (tffc.status > 0) {
-    tf_fmt = status_failed;
-    core.setFailed(`Failed to pass terraform formatting checks [err:${tffc.status}]`);
-    terraformDoApply = false;
-  } else {
-    tf_fmt = status_success;
-  }
-
-  core.startGroup('Run terraform plan');
-  const tfp = await terraform(['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-out=terraform.plan'].concat(terraformTargets).concat(terraformPlanDestroy));
-  core.endGroup();
-  if (tfp.status > 0) {
-    tf_plan = status_failed;
-    core.setFailed(`Failed to prepare the terraform plan [err:${tfp.status}]`);
-    terraformDoApply = false;
-  } else {
-    tf_plan = status_success;
-  }
-
-  core.startGroup('Run terraform apply');
-  if (terraformDoApply === true) {
-    const tfa = await terraform(['apply', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve'].concat(terraformTargets).concat('terraform.plan'));
-    core.endGroup();
-    if (tfa.status > 0) {
-      tf_apply = status_failed;
-      core.setFailed(`Failed to apply terraform plan [err:${tfa.status}]`);
-    } else {
-      tf_apply = status_success;
-    }
-  } else {
-    core.info('Skipped');
-    core.endGroup();
-  }
-
-  /* DESTROY START */
-  core.startGroup('Run terraform destroy');
-  if (terraformDoDestroy === true) {
-    const tfd = await terraform(['destroy', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve'].concat(terraformTargets));
-    core.info(tfd.stdout);
-    core.endGroup();
-    if (tfd.status > 0) {
-      tf_destroy = status_failed;
-      core.setFailed(`Failed to destroy resources [err:${tfd.status}]`);
-    } else {
-      tf_destroy = status_success;
-
-      if (terraformWorkspace && terraformWorkspace !== 'default' && !terraformTargets) {
-        core.startGroup('Run terraform workspace deletion');
-        await terraform(['workspace', 'select', 'default']); // have to switch to different workspace before deleting workspace defined in `terraformWorkspace`
-        const tfwd = await terraform(['workspace', 'delete', terraformWorkspace]); // have to switch to different workspace before deleting workspace defined in `terraformWorkspace`
-
-        core.info(tfwd.stdout);
-        core.endGroup();
-
-        if (tfwd.status > 0) {
-          tf_workspace_deletion = status_failed;
-          core.setFailed(`Failed to delete terraform workspace [err:${tfwd.status}]`);
-        } else {
-          tf_workspace_deletion = status_success;
-        }
-      }
-    }
-  } else {
-    core.info('Skipped');
-    core.endGroup();
-  }
-  /* DESTROY END */
-
-  core.info('');
-  core.info(`Version: ${tf_version}`);
-  core.info(`Initialization: ${tf_init}`);
-  core.info(`Formatting: ${tf_fmt}`);
-  core.info(`Workspace selection: ${tf_workspace_selection}`);
-  core.info(`Workspace creation: ${tf_workspace_creation}`);
-  core.info(`Plan: ${tf_plan}`);
-  core.info(`Apply: ${tf_apply}`);
-  core.info(`Destroy: ${tf_destroy}`);
-  core.info(`Workspace deletion: ${tf_workspace_deletion}`);
-})().catch(error => {
-  core.setFailed(error.message);
-});
-
-
-/***/ }),
-
-/***/ 268:
+/***/ 351:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -286,7 +28,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.issue = exports.issueCommand = void 0;
 const os = __importStar(__nccwpck_require__(87));
-const utils_1 = __nccwpck_require__(685);
+const utils_1 = __nccwpck_require__(278);
 /**
  * Commands
  *
@@ -358,7 +100,7 @@ function escapeProperty(s) {
 
 /***/ }),
 
-/***/ 398:
+/***/ 186:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -393,12 +135,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getIDToken = exports.getState = exports.saveState = exports.group = exports.endGroup = exports.startGroup = exports.info = exports.notice = exports.warning = exports.error = exports.debug = exports.isDebug = exports.setFailed = exports.setCommandEcho = exports.setOutput = exports.getBooleanInput = exports.getMultilineInput = exports.getInput = exports.addPath = exports.setSecret = exports.exportVariable = exports.ExitCode = void 0;
-const command_1 = __nccwpck_require__(268);
-const file_command_1 = __nccwpck_require__(14);
-const utils_1 = __nccwpck_require__(685);
+const command_1 = __nccwpck_require__(351);
+const file_command_1 = __nccwpck_require__(717);
+const utils_1 = __nccwpck_require__(278);
 const os = __importStar(__nccwpck_require__(87));
 const path = __importStar(__nccwpck_require__(622));
-const oidc_utils_1 = __nccwpck_require__(565);
+const oidc_utils_1 = __nccwpck_require__(41);
 /**
  * The code to exit an action
  */
@@ -677,7 +419,7 @@ exports.getIDToken = getIDToken;
 
 /***/ }),
 
-/***/ 14:
+/***/ 717:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -708,7 +450,7 @@ exports.issueCommand = void 0;
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const fs = __importStar(__nccwpck_require__(747));
 const os = __importStar(__nccwpck_require__(87));
-const utils_1 = __nccwpck_require__(685);
+const utils_1 = __nccwpck_require__(278);
 function issueCommand(command, message) {
     const filePath = process.env[`GITHUB_${command}`];
     if (!filePath) {
@@ -726,7 +468,7 @@ exports.issueCommand = issueCommand;
 
 /***/ }),
 
-/***/ 565:
+/***/ 41:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -742,9 +484,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.OidcClient = void 0;
-const http_client_1 = __nccwpck_require__(68);
-const auth_1 = __nccwpck_require__(488);
-const core_1 = __nccwpck_require__(398);
+const http_client_1 = __nccwpck_require__(925);
+const auth_1 = __nccwpck_require__(702);
+const core_1 = __nccwpck_require__(186);
 class OidcClient {
     static createHttpClient(allowRetry = true, maxRetry = 10) {
         const requestOptions = {
@@ -810,7 +552,7 @@ exports.OidcClient = OidcClient;
 
 /***/ }),
 
-/***/ 685:
+/***/ 278:
 /***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
@@ -857,7 +599,7 @@ exports.toCommandProperties = toCommandProperties;
 
 /***/ }),
 
-/***/ 626:
+/***/ 514:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -893,7 +635,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getExecOutput = exports.exec = void 0;
 const string_decoder_1 = __nccwpck_require__(304);
-const tr = __importStar(__nccwpck_require__(336));
+const tr = __importStar(__nccwpck_require__(159));
 /**
  * Exec a command.
  * Output will be streamed to the live console.
@@ -967,7 +709,7 @@ exports.getExecOutput = getExecOutput;
 
 /***/ }),
 
-/***/ 336:
+/***/ 159:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -1006,8 +748,8 @@ const os = __importStar(__nccwpck_require__(87));
 const events = __importStar(__nccwpck_require__(614));
 const child = __importStar(__nccwpck_require__(129));
 const path = __importStar(__nccwpck_require__(622));
-const io = __importStar(__nccwpck_require__(56));
-const ioUtil = __importStar(__nccwpck_require__(298));
+const io = __importStar(__nccwpck_require__(436));
+const ioUtil = __importStar(__nccwpck_require__(962));
 const timers_1 = __nccwpck_require__(213);
 /* eslint-disable @typescript-eslint/unbound-method */
 const IS_WINDOWS = process.platform === 'win32';
@@ -1592,7 +1334,7 @@ class ExecState extends events.EventEmitter {
 
 /***/ }),
 
-/***/ 488:
+/***/ 702:
 /***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
@@ -1658,7 +1400,7 @@ exports.PersonalAccessTokenCredentialHandler = PersonalAccessTokenCredentialHand
 
 /***/ }),
 
-/***/ 68:
+/***/ 925:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -1666,7 +1408,7 @@ exports.PersonalAccessTokenCredentialHandler = PersonalAccessTokenCredentialHand
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const http = __nccwpck_require__(605);
 const https = __nccwpck_require__(211);
-const pm = __nccwpck_require__(504);
+const pm = __nccwpck_require__(443);
 let tunnel;
 var HttpCodes;
 (function (HttpCodes) {
@@ -2085,7 +1827,7 @@ class HttpClient {
         if (useProxy) {
             // If using proxy, need tunnel
             if (!tunnel) {
-                tunnel = __nccwpck_require__(238);
+                tunnel = __nccwpck_require__(294);
             }
             const agentOptions = {
                 maxSockets: maxSockets,
@@ -2203,7 +1945,7 @@ exports.HttpClient = HttpClient;
 
 /***/ }),
 
-/***/ 504:
+/***/ 443:
 /***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
@@ -2268,7 +2010,7 @@ exports.checkBypass = checkBypass;
 
 /***/ }),
 
-/***/ 298:
+/***/ 962:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -2452,7 +2194,7 @@ exports.getCmdPath = getCmdPath;
 
 /***/ }),
 
-/***/ 56:
+/***/ 436:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -2491,7 +2233,7 @@ const assert_1 = __nccwpck_require__(357);
 const childProcess = __importStar(__nccwpck_require__(129));
 const path = __importStar(__nccwpck_require__(622));
 const util_1 = __nccwpck_require__(669);
-const ioUtil = __importStar(__nccwpck_require__(298));
+const ioUtil = __importStar(__nccwpck_require__(962));
 const exec = util_1.promisify(childProcess.exec);
 const execFile = util_1.promisify(childProcess.execFile);
 /**
@@ -2800,7 +2542,7 @@ function copyFile(srcFile, destFile, force) {
 
 /***/ }),
 
-/***/ 714:
+/***/ 473:
 /***/ (function(module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -2835,8 +2577,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports._readLinuxVersionFile = exports._getOsVersion = exports._findMatch = void 0;
-const semver = __importStar(__nccwpck_require__(924));
-const core_1 = __nccwpck_require__(398);
+const semver = __importStar(__nccwpck_require__(911));
+const core_1 = __nccwpck_require__(186);
 // needs to be require for core node modules to be mocked
 /* eslint @typescript-eslint/no-require-imports: 0 */
 const os = __nccwpck_require__(87);
@@ -2935,7 +2677,7 @@ exports._readLinuxVersionFile = _readLinuxVersionFile;
 
 /***/ }),
 
-/***/ 226:
+/***/ 279:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -2970,7 +2712,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.RetryHelper = void 0;
-const core = __importStar(__nccwpck_require__(398));
+const core = __importStar(__nccwpck_require__(186));
 /**
  * Internal class for retries
  */
@@ -3025,7 +2767,7 @@ exports.RetryHelper = RetryHelper;
 
 /***/ }),
 
-/***/ 220:
+/***/ 784:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -3063,20 +2805,20 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.evaluateVersions = exports.isExplicitVersion = exports.findFromManifest = exports.getManifestFromRepo = exports.findAllVersions = exports.find = exports.cacheFile = exports.cacheDir = exports.extractZip = exports.extractXar = exports.extractTar = exports.extract7z = exports.downloadTool = exports.HTTPError = void 0;
-const core = __importStar(__nccwpck_require__(398));
-const io = __importStar(__nccwpck_require__(56));
+const core = __importStar(__nccwpck_require__(186));
+const io = __importStar(__nccwpck_require__(436));
 const fs = __importStar(__nccwpck_require__(747));
-const mm = __importStar(__nccwpck_require__(714));
+const mm = __importStar(__nccwpck_require__(473));
 const os = __importStar(__nccwpck_require__(87));
 const path = __importStar(__nccwpck_require__(622));
-const httpm = __importStar(__nccwpck_require__(68));
-const semver = __importStar(__nccwpck_require__(924));
+const httpm = __importStar(__nccwpck_require__(925));
+const semver = __importStar(__nccwpck_require__(911));
 const stream = __importStar(__nccwpck_require__(413));
 const util = __importStar(__nccwpck_require__(669));
-const v4_1 = __importDefault(__nccwpck_require__(776));
-const exec_1 = __nccwpck_require__(626);
+const v4_1 = __importDefault(__nccwpck_require__(824));
+const exec_1 = __nccwpck_require__(514);
 const assert_1 = __nccwpck_require__(357);
-const retry_helper_1 = __nccwpck_require__(226);
+const retry_helper_1 = __nccwpck_require__(279);
 class HTTPError extends Error {
     constructor(httpStatusCode) {
         super(`Unexpected HTTP response: ${httpStatusCode}`);
@@ -3697,7 +3439,7 @@ function _unique(values) {
 
 /***/ }),
 
-/***/ 924:
+/***/ 911:
 /***/ ((module, exports) => {
 
 exports = module.exports = SemVer
@@ -5300,15 +5042,15 @@ function coerce (version, options) {
 
 /***/ }),
 
-/***/ 238:
+/***/ 294:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-module.exports = __nccwpck_require__(176);
+module.exports = __nccwpck_require__(219);
 
 
 /***/ }),
 
-/***/ 176:
+/***/ 219:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -5580,7 +5322,7 @@ exports.debug = debug; // for test
 
 /***/ }),
 
-/***/ 845:
+/***/ 707:
 /***/ ((module) => {
 
 /**
@@ -5613,7 +5355,7 @@ module.exports = bytesToUuid;
 
 /***/ }),
 
-/***/ 3:
+/***/ 859:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 // Unique ID creation requires a high quality random # generator.  In node.js
@@ -5628,11 +5370,11 @@ module.exports = function nodeRNG() {
 
 /***/ }),
 
-/***/ 776:
+/***/ 824:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-var rng = __nccwpck_require__(3);
-var bytesToUuid = __nccwpck_require__(845);
+var rng = __nccwpck_require__(859);
+var bytesToUuid = __nccwpck_require__(707);
 
 function v4(options, buf, offset) {
   var i = buf && offset || 0;
@@ -5668,7 +5410,7 @@ module.exports = v4;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("assert");;
+module.exports = require("assert");
 
 /***/ }),
 
@@ -5676,7 +5418,7 @@ module.exports = require("assert");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("child_process");;
+module.exports = require("child_process");
 
 /***/ }),
 
@@ -5684,7 +5426,7 @@ module.exports = require("child_process");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("crypto");;
+module.exports = require("crypto");
 
 /***/ }),
 
@@ -5692,7 +5434,7 @@ module.exports = require("crypto");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("events");;
+module.exports = require("events");
 
 /***/ }),
 
@@ -5700,7 +5442,7 @@ module.exports = require("events");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("fs");;
+module.exports = require("fs");
 
 /***/ }),
 
@@ -5708,7 +5450,7 @@ module.exports = require("fs");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("http");;
+module.exports = require("http");
 
 /***/ }),
 
@@ -5716,7 +5458,7 @@ module.exports = require("http");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("https");;
+module.exports = require("https");
 
 /***/ }),
 
@@ -5724,7 +5466,7 @@ module.exports = require("https");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("net");;
+module.exports = require("net");
 
 /***/ }),
 
@@ -5732,7 +5474,7 @@ module.exports = require("net");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("os");;
+module.exports = require("os");
 
 /***/ }),
 
@@ -5740,7 +5482,7 @@ module.exports = require("os");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("path");;
+module.exports = require("path");
 
 /***/ }),
 
@@ -5748,7 +5490,7 @@ module.exports = require("path");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("stream");;
+module.exports = require("stream");
 
 /***/ }),
 
@@ -5756,7 +5498,7 @@ module.exports = require("stream");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("string_decoder");;
+module.exports = require("string_decoder");
 
 /***/ }),
 
@@ -5764,7 +5506,7 @@ module.exports = require("string_decoder");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("timers");;
+module.exports = require("timers");
 
 /***/ }),
 
@@ -5772,7 +5514,7 @@ module.exports = require("timers");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("tls");;
+module.exports = require("tls");
 
 /***/ }),
 
@@ -5780,7 +5522,7 @@ module.exports = require("tls");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("util");;
+module.exports = require("util");
 
 /***/ })
 
@@ -5792,8 +5534,9 @@ module.exports = require("util");;
 /******/ 	// The require function
 /******/ 	function __nccwpck_require__(moduleId) {
 /******/ 		// Check if module is in cache
-/******/ 		if(__webpack_module_cache__[moduleId]) {
-/******/ 			return __webpack_module_cache__[moduleId].exports;
+/******/ 		var cachedModule = __webpack_module_cache__[moduleId];
+/******/ 		if (cachedModule !== undefined) {
+/******/ 			return cachedModule.exports;
 /******/ 		}
 /******/ 		// Create a new module (and put it into the cache)
 /******/ 		var module = __webpack_module_cache__[moduleId] = {
@@ -5818,10 +5561,265 @@ module.exports = require("util");;
 /************************************************************************/
 /******/ 	/* webpack/runtime/compat */
 /******/ 	
-/******/ 	__nccwpck_require__.ab = __dirname + "/";/************************************************************************/
-/******/ 	// module exports must be returned from runtime so entry inlining is disabled
-/******/ 	// startup
-/******/ 	// Load entry module and return exports
-/******/ 	return __nccwpck_require__(589);
+/******/ 	if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = __dirname + "/";
+/******/ 	
+/************************************************************************/
+var __webpack_exports__ = {};
+// This entry need to be wrapped in an IIFE because it need to be isolated against other modules in the chunk.
+(() => {
+const core = __nccwpck_require__(186);
+const tc = __nccwpck_require__(784);
+const exec = __nccwpck_require__(514);
+const fs = __nccwpck_require__(747);
+const path = __nccwpck_require__(622);
+
+const status_skipped = '﹣';
+const status_success = '✓';
+const status_failed = '✕';
+
+const tfswitchPath = `${process.env['HOME']}/tfswitch`;
+const terraformPath = `${process.env['HOME']}/terraform`;
+
+async function shell(command, args, options = {}) {
+  options.env = {
+    ...process.env,
+    ...options.env,
+    GOOGLE_APPLICATION_CREDENTIALS: `${process.env['HOME']}/gcloud.json`,
+  };
+  options.listeners = {
+    ...options.listeners,
+    debug: (data) => { core.debug(data.toString()); },
+  };
+  options.ignoreReturnCode ??= true;
+
+  const result = await exec.getExecOutput(command, args, options);
+  return {
+    status: result.exitCode,
+    stderr: result.stderr,
+    stdout: result.stdout,
+  };
+}
+
+async function terraform(args) {
+  return await shell(terraformPath, args, {
+    cwd: core.getInput('terraform_directory'),
+  });
+}
+
+(async () => {
+  const terraformDirectory = core.getInput('terraform_directory');
+  let terraformDoApply = core.getBooleanInput('terraform_do_apply');
+  let terraformDoDestroy = core.getBooleanInput('terraform_do_destroy');
+  const terraformLock = core.getBooleanInput('terraform_lock');
+  const terraformParallelism = core.getInput('terraform_parallelism');
+  const terraformPlanDestroy = (terraformDoDestroy || core.getBooleanInput('terraform_plan_destroy')) ? '-destroy' : '';
+  const terraformTargets = core.getMultilineInput('terraform_targets').map((target) => `-target=${target}`);
+  const terraformVariables = core.getInput('terraform_variables');
+  const terraformWorkspace = core.getInput('terraform_workspace');
+
+  let tf_version = '<unknown>';
+  let tf_init = status_skipped;
+  let tf_fmt = status_skipped;
+  let tf_plan = status_skipped;
+  let tf_apply = status_skipped;
+  let tf_destroy = status_skipped;
+  let tf_workspace_selection = status_skipped;
+  let tf_workspace_creation = status_skipped;
+  let tf_workspace_deletion = status_skipped;
+
+  core.startGroup('Sanity checking inputs');
+  if (/^\d+$/.test(terraformParallelism) === false) {
+    core.setFailed(`Sanity checks failed. Non-integer value for 'terraform_parallelism': ${terraformParallelism}`);
+    process.exit(1);
+  }
+  if (terraformDoApply === true && terraformDoDestroy === true) {
+    core.setFailed('Sanity checks failed. Can\'t apply AND destroy in the same action');
+    process.exit(1);
+  }
+  core.info('Good to go!');
+  core.endGroup();
+
+  core.startGroup('Configure Google Cloud credentials');
+  fs.writeFileSync(`${process.env['HOME']}/gcloud.json`, core.getInput('google_credentials'));
+  core.endGroup();
+
+  core.startGroup('Setup Terraform CLI');
+  core.info(`Working directory: ${terraformDirectory}`);
+  core.info('Installing tfswitch:');
+  const tfsPath = await tc.downloadTool('https://raw.githubusercontent.com/warrensbox/terraform-switcher/release/install.sh');
+  await shell('sh', [tfsPath, '-b', path.dirname(tfswitchPath)]);
+  core.info('Running tfswitch:');
+  const tfs = await shell(tfswitchPath, ['-b', terraformPath], {
+    cwd: terraformDirectory,
+  });
+  core.endGroup();
+  if (tfs.status > 0) {
+    core.setFailed(`Failed to determine which terraform version to use [err:${tfs.status}]`);
+    process.exit(1);
+  }
+
+  core.startGroup('Run terraform version');
+  const tfv = await terraform(['version']);
+  core.endGroup();
+  if (tfv.status > 0) {
+    core.info(`status: ${tfv.status}`);
+    core.setFailed(`Failed to determine terraform version [err:${tfv.status}]`);
+    terraformDoApply = false;
+  } else {
+    tf_version = tfv.stdout.replace(/\r?\n|\r/g, ' ').match(/ v([0-9]+\.[0-9]+\.[0-9]+) /)[1];
+  }
+
+  core.startGroup('Run terraform init');
+  const tfi = await terraform(['init']);
+  core.endGroup();
+  if (tfi.status > 0) {
+    tf_init = status_failed;
+    core.setFailed(`Failed to initialize terraform [err:${tfi.status}]`);
+    terraformDoApply = false;
+  } else {
+    tf_init = status_success;
+  }
+
+  /* VARIABLES START */
+  core.startGroup('Assign terraform variables');
+  if (terraformVariables) {
+    const variables = JSON.parse(terraformVariables);
+    for (let key in variables) {
+      if (Object.prototype.hasOwnProperty.call(variables, key)) {
+        process.env[`TF_VAR_${key}`] = variables[key];
+        core.info(`Assigned variable ${key} with value ${variables[key]}`);
+      }
+    }
+  } else {
+    core.info('No variables to assign');
+  }
+  core.endGroup();
+  /* VARIABLES END */
+
+  /* WORKSPACE SELECTION START */
+  core.startGroup('Run terraform workspace selection');
+  core.startGroup(`Workspace input: ${terraformWorkspace}`);
+  if (terraformWorkspace) {
+    const tfws = await terraform(['workspace', 'select', terraformWorkspace]);
+    core.info(tfws.stdout);
+    core.endGroup();
+
+    if (tfws.status > 0) {
+      tf_workspace_selection = status_failed;
+
+      core.startGroup('Failed to select workspace (assuming non-existent), creating workspace...');
+      const tfwc = await terraform(['workspace', 'new', terraformWorkspace]);
+      core.info(tfwc.stdout);
+      core.endGroup();
+
+      if (tfwc.status > 0) {
+        tf_workspace_creation = status_failed;
+        core.setFailed('Failed to create workspace');
+
+        process.exit(1);
+      } else {
+        tf_workspace_selection = status_success;
+        tf_workspace_creation = status_success;
+      }
+    } else {
+      tf_workspace_selection = status_success;
+    }
+  } else {
+    core.info('Skipped');
+    core.endGroup();
+  }
+  /* WORKSPACE SELECTION END */
+
+  core.startGroup('Run terraform fmt');
+  const tffc = await terraform(['fmt', '-check']);
+  if (tffc.status > 0) {
+    await terraform(['fmt', '-diff', '-write=false', '-list=false']);
+  }
+  core.endGroup();
+  if (tffc.status > 0) {
+    tf_fmt = status_failed;
+    core.setFailed(`Failed to pass terraform formatting checks [err:${tffc.status}]`);
+    terraformDoApply = false;
+  } else {
+    tf_fmt = status_success;
+  }
+
+  core.startGroup('Run terraform plan');
+  const tfp = await terraform(['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-out=terraform.plan'].concat(terraformTargets).concat(terraformPlanDestroy));
+  core.endGroup();
+  if (tfp.status > 0) {
+    tf_plan = status_failed;
+    core.setFailed(`Failed to prepare the terraform plan [err:${tfp.status}]`);
+    terraformDoApply = false;
+  } else {
+    tf_plan = status_success;
+  }
+
+  core.startGroup('Run terraform apply');
+  if (terraformDoApply === true) {
+    const tfa = await terraform(['apply', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve'].concat(terraformTargets).concat('terraform.plan'));
+    core.endGroup();
+    if (tfa.status > 0) {
+      tf_apply = status_failed;
+      core.setFailed(`Failed to apply terraform plan [err:${tfa.status}]`);
+    } else {
+      tf_apply = status_success;
+    }
+  } else {
+    core.info('Skipped');
+    core.endGroup();
+  }
+
+  /* DESTROY START */
+  core.startGroup('Run terraform destroy');
+  if (terraformDoDestroy === true) {
+    const tfd = await terraform(['destroy', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve'].concat(terraformTargets));
+    core.info(tfd.stdout);
+    core.endGroup();
+    if (tfd.status > 0) {
+      tf_destroy = status_failed;
+      core.setFailed(`Failed to destroy resources [err:${tfd.status}]`);
+    } else {
+      tf_destroy = status_success;
+
+      if (terraformWorkspace && terraformWorkspace !== 'default' && !terraformTargets) {
+        core.startGroup('Run terraform workspace deletion');
+        await terraform(['workspace', 'select', 'default']); // have to switch to different workspace before deleting workspace defined in `terraformWorkspace`
+        const tfwd = await terraform(['workspace', 'delete', terraformWorkspace]); // have to switch to different workspace before deleting workspace defined in `terraformWorkspace`
+
+        core.info(tfwd.stdout);
+        core.endGroup();
+
+        if (tfwd.status > 0) {
+          tf_workspace_deletion = status_failed;
+          core.setFailed(`Failed to delete terraform workspace [err:${tfwd.status}]`);
+        } else {
+          tf_workspace_deletion = status_success;
+        }
+      }
+    }
+  } else {
+    core.info('Skipped');
+    core.endGroup();
+  }
+  /* DESTROY END */
+
+  core.info('');
+  core.info(`Version: ${tf_version}`);
+  core.info(`Initialization: ${tf_init}`);
+  core.info(`Formatting: ${tf_fmt}`);
+  core.info(`Workspace selection: ${tf_workspace_selection}`);
+  core.info(`Workspace creation: ${tf_workspace_creation}`);
+  core.info(`Plan: ${tf_plan}`);
+  core.info(`Apply: ${tf_apply}`);
+  core.info(`Destroy: ${tf_destroy}`);
+  core.info(`Workspace deletion: ${tf_workspace_deletion}`);
+})().catch(error => {
+  core.setFailed(error.message);
+});
+
+})();
+
+module.exports = __webpack_exports__;
 /******/ })()
 ;
