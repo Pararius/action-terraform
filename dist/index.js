@@ -5514,7 +5514,7 @@ async function terraform(args) {
   let terraformDoDestroy = core.getBooleanInput('terraform_do_destroy');
   const terraformLock = core.getBooleanInput('terraform_lock');
   const terraformParallelism = core.getInput('terraform_parallelism');
-  const terraformPlanDestroy = (terraformDoDestroy || core.getBooleanInput('terraform_plan_destroy')) ? '-destroy' : '';
+  const terraformPlanDestroy = (terraformDoDestroy || core.getBooleanInput('terraform_plan_destroy')) ? '-destroy' : [];
   const terraformTargets = core.getMultilineInput('terraform_targets').map((target) => `-target=${target}`);
   const terraformVariables = core.getInput('terraform_variables');
   const terraformWorkspace = core.getInput('terraform_workspace');
