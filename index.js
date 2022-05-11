@@ -1,8 +1,6 @@
 const core = require('@actions/core');
-const tc = require('@actions/tool-cache');
 const exec = require('@actions/exec');
 const fs = require('fs');
-const path = require('path');
 
 const status_skipped = '﹣';
 const status_success = '✓';
@@ -37,7 +35,6 @@ async function terraform(args) {
 }
 
 (async () => {
-  const terraformDirectory = core.getInput('terraform_directory');
   let terraformDoApply = core.getBooleanInput('terraform_do_apply');
   let terraformDoDestroy = core.getBooleanInput('terraform_do_destroy');
   const terraformLock = core.getBooleanInput('terraform_lock');
