@@ -1,15 +1,12 @@
 const core = require('@actions/core');
-const tc = require('@actions/tool-cache');
 const exec = require('@actions/exec');
 const fs = require('fs');
-const path = require('path');
 
 const status_skipped = '﹣';
 const status_success = '✓';
 const status_failed = '✕';
 
-const tfswitchPath = `${process.env['HOME']}/tfswitch`;
-const terraformPath = `${process.env['HOME']}/terraform`;
+const terraformPath = 'terraform';
 
 async function shell(command, args, options = {}) {
   options.env = {
@@ -38,7 +35,6 @@ async function terraform(args) {
 }
 
 (async () => {
-  const terraformDirectory = core.getInput('terraform_directory');
   let terraformDoApply = core.getBooleanInput('terraform_do_apply');
   let terraformDoDestroy = core.getBooleanInput('terraform_do_destroy');
   const terraformLock = core.getBooleanInput('terraform_lock');
@@ -73,21 +69,6 @@ async function terraform(args) {
   core.startGroup('Configure Google Cloud credentials');
   fs.writeFileSync(`${process.env['HOME']}/gcloud.json`, core.getInput('google_credentials'));
   core.endGroup();
-
-  core.startGroup('Setup Terraform CLI');
-  core.info(`Working directory: ${terraformDirectory}`);
-  core.info('Installing tfswitch:');
-  const tfsPath = await tc.downloadTool('https://raw.githubusercontent.com/warrensbox/terraform-switcher/release/install.sh');
-  await shell('sh', [tfsPath, '-b', path.dirname(tfswitchPath)]);
-  core.info('Running tfswitch:');
-  const tfs = await shell(tfswitchPath, ['-b', terraformPath], {
-    cwd: terraformDirectory,
-  });
-  core.endGroup();
-  if (tfs.status > 0) {
-    core.setFailed(`Failed to determine which terraform version to use [err:${tfs.status}]`);
-    process.exit(1);
-  }
 
   core.startGroup('Run terraform version');
   const tfv = await terraform(['version']);
