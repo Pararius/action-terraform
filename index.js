@@ -5,7 +5,6 @@ const fs = require('fs');
 const status_skipped = '﹣';
 const status_success = '✓';
 const status_failed = '✕';
-const detailedExitcode = core.getBooleanInput('detailed_exitcode');
 
 const terraformPath = 'terraform';
 
@@ -30,7 +29,6 @@ async function shell(command, args, options = {}) {
 }
 
 async function terraform(args) {
-  if (detailedExitcode) args.push('-detailed-exitcode');
   return await shell(terraformPath, args, {
     cwd: core.getInput('terraform_directory'),
   });
@@ -41,6 +39,7 @@ async function terraform(args) {
   let terraformDoDestroy = core.getBooleanInput('terraform_do_destroy');
   const terraformLock = core.getBooleanInput('terraform_lock');
   const terraformParallelism = core.getInput('terraform_parallelism');
+  const terraformDetailedExitcode = core.getBooleanInput('detailed_exitcode') ? '-detailed-exitcode' : [];
   const terraformPlanDestroy = (terraformDoDestroy || core.getBooleanInput('terraform_plan_destroy')) ? '-destroy' : [];
   const terraformTargets = core.getMultilineInput('terraform_targets').map((target) => `-target=${target}`);
   const terraformVariables = core.getInput('terraform_variables');
@@ -159,7 +158,7 @@ async function terraform(args) {
   }
 
   core.startGroup('Run terraform plan');
-  const tfp = await terraform(['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-out=terraform.plan'].concat(terraformTargets).concat(terraformPlanDestroy));
+  const tfp = await terraform(['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-out=terraform.plan'].concat(terraformDetailedExitcode).concat(terraformTargets).concat(terraformPlanDestroy));
   core.endGroup();
   if (tfp.status > 0) {
     tf_plan = status_failed;
@@ -171,7 +170,7 @@ async function terraform(args) {
 
   core.startGroup('Run terraform apply');
   if (terraformDoApply === true) {
-    const tfa = await terraform(['apply', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve'].concat(terraformTargets).concat('terraform.plan'));
+    const tfa = await terraform(['apply', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve'].concat(terraformDetailedExitcode).concat(terraformTargets).concat('terraform.plan'));
     core.endGroup();
     if (tfa.status > 0) {
       tf_apply = status_failed;
@@ -187,7 +186,7 @@ async function terraform(args) {
   /* DESTROY START */
   core.startGroup('Run terraform destroy');
   if (terraformDoDestroy === true) {
-    const tfd = await terraform(['destroy', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve'].concat(terraformTargets));
+    const tfd = await terraform(['destroy', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve'].concat(terraformDetailedExitcode).concat(terraformTargets));
     core.info(tfd.stdout);
     core.endGroup();
     if (tfd.status > 0) {
