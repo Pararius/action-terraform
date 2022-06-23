@@ -2,9 +2,9 @@
 name: Terraform
 description: Terraform all-in-one workflow
 inputs:
-  detailed_exit_code:
+  check_for_changes:
     required: false
-    description: Whether to report a detailed exit code
+    description: Whether to report unapplied changes (implies plan only)
     default: 'false'
   google_credentials:
     required: true

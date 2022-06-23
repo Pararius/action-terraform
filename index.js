@@ -40,11 +40,15 @@ async function terraform(args) {
   let terraformDoDestroy = core.getBooleanInput('terraform_do_destroy');
   const terraformLock = core.getBooleanInput('terraform_lock');
   const terraformParallelism = core.getInput('terraform_parallelism');
-  const terraformDetailedExitcode = core.getBooleanInput('detailed_exitcode') ? '-detailed-exitcode' : [];
+  const terraformDetailedExitcode = core.getBooleanInput('check_for_changes') ? '-detailed-exitcode' : [];
   const terraformPlanDestroy = (terraformDoDestroy || core.getBooleanInput('terraform_plan_destroy')) ? '-destroy' : [];
   const terraformTargets = core.getMultilineInput('terraform_targets').map((target) => `-target=${target}`);
   const terraformVariables = core.getInput('terraform_variables');
   const terraformWorkspace = core.getInput('terraform_workspace');
+  if (core.getBooleanInput('check_for_changes')) {
+    terraformDoApply = false;
+    terraformDoDestroy = false;
+  }
 
   let tf_version = '<unknown>';
   let tf_init = status_skipped;
