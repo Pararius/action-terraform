@@ -5,6 +5,7 @@ const fs = require('fs');
 const status_skipped = '﹣';
 const status_success = '✓';
 const status_failed = '✕';
+const status_warning = '⚠';
 
 const terraformPath = 'terraform';
 
@@ -160,23 +161,33 @@ async function terraform(args) {
   core.startGroup('Run terraform plan');
   const tfp = await terraform(['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-out=terraform.plan'].concat(terraformDetailedExitcode).concat(terraformTargets).concat(terraformPlanDestroy));
   core.endGroup();
-  if (tfp.status > 0) {
+  switch (tfp.status) {
+  case 0:
+    tf_plan = status_success;
+    break;
+  case 2:
+    tf_plan = status_warning;
+    core.warning('Terraform reported a diff');
+    break;
+  default:
     tf_plan = status_failed;
     core.setFailed(`Failed to prepare the terraform plan [err:${tfp.status}]`);
     terraformDoApply = false;
-  } else {
-    tf_plan = status_success;
+    break;
   }
 
   core.startGroup('Run terraform apply');
   if (terraformDoApply === true) {
     const tfa = await terraform(['apply', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve'].concat(terraformDetailedExitcode).concat(terraformTargets).concat('terraform.plan'));
     core.endGroup();
-    if (tfa.status > 0) {
+    switch (tfa.status) {
+    case 0:
+    case 2:
+      tf_apply = status_success;
+      break;
+    default:
       tf_apply = status_failed;
       core.setFailed(`Failed to apply terraform plan [err:${tfa.status}]`);
-    } else {
-      tf_apply = status_success;
     }
   } else {
     core.info('Skipped');
@@ -189,10 +200,9 @@ async function terraform(args) {
     const tfd = await terraform(['destroy', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve'].concat(terraformDetailedExitcode).concat(terraformTargets));
     core.info(tfd.stdout);
     core.endGroup();
-    if (tfd.status > 0) {
-      tf_destroy = status_failed;
-      core.setFailed(`Failed to destroy resources [err:${tfd.status}]`);
-    } else {
+    switch (tfd.status) {
+    case 0:
+    case 2:
       tf_destroy = status_success;
 
       if (terraformWorkspace && terraformWorkspace !== 'default' && !terraformTargets) {
@@ -210,6 +220,10 @@ async function terraform(args) {
           tf_workspace_deletion = status_success;
         }
       }
+      break;
+    default:
+      tf_destroy = status_failed;
+      core.setFailed(`Failed to destroy resources [err:${tfd.status}]`);
     }
   } else {
     core.info('Skipped');
