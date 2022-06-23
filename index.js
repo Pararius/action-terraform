@@ -5,6 +5,7 @@ const fs = require('fs');
 const status_skipped = '﹣';
 const status_success = '✓';
 const status_failed = '✕';
+const detailedExitcode = core.getBooleanInput('detailed_exitcode');
 
 const terraformPath = 'terraform';
 
@@ -29,6 +30,7 @@ async function shell(command, args, options = {}) {
 }
 
 async function terraform(args) {
+  if (detailedExitcode) args.push('-detailed-exitcode');
   return await shell(terraformPath, args, {
     cwd: core.getInput('terraform_directory'),
   });
