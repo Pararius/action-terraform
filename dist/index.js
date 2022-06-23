@@ -3133,6 +3133,9 @@ async function terraform(args) {
   case 2:
     tf_plan = status_warning;
     core.warning('Terraform reported a diff');
+    if (terraformDoApply === false && terraformDoDestroy === false) {
+      core.setFailed('Terraform reported a diff, but auto apply was set to false');
+    }
     break;
   default:
     tf_plan = status_failed;
