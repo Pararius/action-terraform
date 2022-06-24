@@ -178,7 +178,7 @@ async function terraform(args) {
     core.startGroup('Run terraform plan');
     let exitCode = 0;
     const slack = new WebClient(slackBotToken);
-    const tfd = await terraform(['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-out=terraform.plan', '-detailed-exitcode'].concat(terraformTargets));
+    const tfd = await terraform(['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-no-color', '-detailed-exitcode'].concat(terraformTargets));
     switch (tfd.status) {
     case 0:
       break;
