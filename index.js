@@ -193,12 +193,12 @@ async function terraform(terraformDirectory, args) {
       });
       if (result.ok !== true) {
         core.setFailed(`Failed to report to slack [err:${result.error}]`);
-        let exitCode = 1;
+        exitCode = 1;
       }
       break;
     default:
       core.setFailed(`Failed to prepare the terraform plan [err:${tfp.status}]`);
-      let exitCode = 1;
+      exitCode = 1;
       break;
     }
     core.endGroup();
