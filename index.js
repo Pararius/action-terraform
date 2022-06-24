@@ -6,7 +6,6 @@ const { WebClient } = require('@slack/web-api');
 const status_skipped = '﹣';
 const status_success = '✓';
 const status_failed = '✕';
-const status_warning = '⚠';
 
 const terraformPath = 'terraform';
 
@@ -201,7 +200,7 @@ async function terraform(args) {
   }
 
   core.startGroup('Run terraform plan');
-  const tfp = await terraform(['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-out=terraform.plan'].concat(terraformDetailedExitcode).concat(terraformTargets).concat(terraformPlanDestroy));
+  const tfp = await terraform(['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-out=terraform.plan'].concat(terraformTargets).concat(terraformPlanDestroy));
   core.endGroup();
   if (tfp.status > 0) {
     tf_plan = status_failed;
@@ -232,9 +231,10 @@ async function terraform(args) {
     const tfd = await terraform(['destroy', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve'].concat(terraformTargets));
     core.info(tfd.stdout);
     core.endGroup();
-    switch (tfd.status) {
-    case 0:
-    case 2:
+    if (tfd.status > 0) {
+      tf_destroy = status_failed;
+      core.setFailed(`Failed to destroy resources [err:${tfd.status}]`);
+    } else {
       tf_destroy = status_success;
 
       if (terraformWorkspace && terraformWorkspace !== 'default' && !terraformTargets) {
@@ -252,10 +252,6 @@ async function terraform(args) {
           tf_workspace_deletion = status_success;
         }
       }
-      break;
-    default:
-      tf_destroy = status_failed;
-      core.setFailed(`Failed to destroy resources [err:${tfd.status}]`);
     }
   } else {
     core.info('Skipped');
