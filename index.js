@@ -1,6 +1,7 @@
 const core = require('@actions/core');
 const exec = require('@actions/exec');
 const fs = require('fs');
+const { WebClient } = require('@slack/web-api');
 
 const status_skipped = '﹣';
 const status_success = '✓';
@@ -40,15 +41,13 @@ async function terraform(args) {
   let terraformDoDestroy = core.getBooleanInput('terraform_do_destroy');
   const terraformLock = core.getBooleanInput('terraform_lock');
   const terraformParallelism = core.getInput('terraform_parallelism');
-  const terraformDetailedExitcode = core.getBooleanInput('check_for_changes') ? '-detailed-exitcode' : [];
   const terraformPlanDestroy = (terraformDoDestroy || core.getBooleanInput('terraform_plan_destroy')) ? '-destroy' : [];
   const terraformTargets = core.getMultilineInput('terraform_targets').map((target) => `-target=${target}`);
   const terraformVariables = core.getInput('terraform_variables');
   const terraformWorkspace = core.getInput('terraform_workspace');
-  if (core.getBooleanInput('check_for_changes')) {
-    terraformDoApply = false;
-    terraformDoDestroy = false;
-  }
+  const reportDrift = core.getBooleanInput('report_drift');
+  const slackChannel = core.getInput('slack_channel_id');
+  const slackBotToken = process.env.SLACK_BOT_TOKEN;
 
   let tf_version = '<unknown>';
   let tf_init = status_skipped;
@@ -64,6 +63,20 @@ async function terraform(args) {
   if (/^\d+$/.test(terraformParallelism) === false) {
     core.setFailed(`Sanity checks failed. Non-integer value for 'terraform_parallelism': ${terraformParallelism}`);
     process.exit(1);
+  }
+  if (reportDrift === true) {
+    if (terraformDoApply === true || terraformDoDestroy === true) {
+      core.setFailed('Sanity checks failed. Can\'t apply or destroy when reporting drift');
+      process.exit(1);
+    }
+    if (!slackChannel) {
+      core.setFailed('Sanity checks failed. Slack channel id not specified.');
+      process.exit(1);
+    }
+    if (!slackBotToken) {
+      core.setFailed('Sanity checks failed. Slack bot token not provided.');
+      process.exit(1);
+    }
   }
   if (terraformDoApply === true && terraformDoDestroy === true) {
     core.setFailed('Sanity checks failed. Can\'t apply AND destroy in the same action');
@@ -162,39 +175,51 @@ async function terraform(args) {
     tf_fmt = status_success;
   }
 
+  if (reportDrift === true) {
+    core.startGroup('Run terraform plan');
+    const slack = new WebClient(slackBotToken);
+    const tfd = await terraform(['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-out=terraform.plan', '-detailed-exitcode'].concat(terraformTargets));
+    switch (tfd.status) {
+    case 0:
+      break;
+    case 2:
+      core.warning('Terraform reported a diff');
+      const result = await slack.chat.postMessage({
+        icon_url: 'https://cdn.icon-icons.com/icons2/2107/PNG/512/file_type_terraform_icon_130125.png',
+        text: `Unapplied changes were detected for ${terraformWorkspace}:\n\`\`\`\n${tfd.stdout}\n\`\`\``,
+        username: 'TreeHouse GitHub Actions',
+        channel: slackChannel,
+      });
+      if (result.ok !== true) core.setFailed(`Failed to report to slack [err:${result.error}]`);
+      break;
+    default:
+      core.setFailed(`Failed to prepare the terraform plan [err:${tfp.status}]`);
+      break;
+    }
+    core.endGroup();
+    core.exit();
+  }
+
   core.startGroup('Run terraform plan');
   const tfp = await terraform(['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-out=terraform.plan'].concat(terraformDetailedExitcode).concat(terraformTargets).concat(terraformPlanDestroy));
   core.endGroup();
-  switch (tfp.status) {
-  case 0:
-    tf_plan = status_success;
-    break;
-  case 2:
-    tf_plan = status_warning;
-    core.warning('Terraform reported a diff');
-    if (terraformDoApply === false && terraformDoDestroy === false) {
-      core.setFailed('Terraform reported a diff, but auto apply was set to false');
-    }
-    break;
-  default:
+  if (tfp.status > 0) {
     tf_plan = status_failed;
     core.setFailed(`Failed to prepare the terraform plan [err:${tfp.status}]`);
     terraformDoApply = false;
-    break;
+  } else {
+    tf_plan = status_success;
   }
 
   core.startGroup('Run terraform apply');
   if (terraformDoApply === true) {
-    const tfa = await terraform(['apply', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve'].concat(terraformDetailedExitcode).concat(terraformTargets).concat('terraform.plan'));
+    const tfa = await terraform(['apply', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve'].concat(terraformTargets).concat('terraform.plan'));
     core.endGroup();
-    switch (tfa.status) {
-    case 0:
-    case 2:
-      tf_apply = status_success;
-      break;
-    default:
+    if (tfa.status > 0) {
       tf_apply = status_failed;
       core.setFailed(`Failed to apply terraform plan [err:${tfa.status}]`);
+    } else {
+      tf_apply = status_success;
     }
   } else {
     core.info('Skipped');
@@ -204,7 +229,7 @@ async function terraform(args) {
   /* DESTROY START */
   core.startGroup('Run terraform destroy');
   if (terraformDoDestroy === true) {
-    const tfd = await terraform(['destroy', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve'].concat(terraformDetailedExitcode).concat(terraformTargets));
+    const tfd = await terraform(['destroy', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve'].concat(terraformTargets));
     core.info(tfd.stdout);
     core.endGroup();
     switch (tfd.status) {
