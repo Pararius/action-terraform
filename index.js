@@ -183,7 +183,7 @@ async function terraform(terraformDirectory, args) {
     switch (tfd.status) {
     case 0:
       break;
-    case 2:
+    case 2: {
       core.warning('Terraform reported a diff');
       const result = await slack.chat.postMessage({
         icon_url: 'https://cdn.icon-icons.com/icons2/2107/PNG/512/file_type_terraform_icon_130125.png',
@@ -196,6 +196,7 @@ async function terraform(terraformDirectory, args) {
         exitCode = 1;
       }
       break;
+    }
     default:
       core.setFailed(`Failed to prepare the terraform plan [err:${tfp.status}]`);
       exitCode = 1;
