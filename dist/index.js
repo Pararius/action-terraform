@@ -12791,6 +12791,7 @@ async function terraform(args) {
 
   if (reportDrift === true) {
     core.startGroup('Run terraform plan');
+    let exitCode = 0;
     const slack = new WebClient(slackBotToken);
     const tfd = await terraform(['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-out=terraform.plan', '-detailed-exitcode'].concat(terraformTargets));
     switch (tfd.status) {
@@ -12804,14 +12805,18 @@ async function terraform(args) {
         username: 'TreeHouse GitHub Actions',
         channel: slackChannel,
       });
-      if (result.ok !== true) core.setFailed(`Failed to report to slack [err:${result.error}]`);
+      if (result.ok !== true) {
+        core.setFailed(`Failed to report to slack [err:${result.error}]`);
+        let exitCode = 1;
+      }
       break;
     default:
       core.setFailed(`Failed to prepare the terraform plan [err:${tfp.status}]`);
+      let exitCode = 1;
       break;
     }
     core.endGroup();
-    core.exit();
+    process.exit(exitCode);
   }
 
   core.startGroup('Run terraform plan');
