@@ -2,6 +2,14 @@
 name: Terraform
 description: Terraform all-in-one workflow
 inputs:
+  report_drift:
+    required: false
+    description: Whether to report unapplied changes
+    default: false
+  slack_channel_id:
+    required: false
+    description: Slack channel to report unapplied changes (required when `report_drift` is true)
+    default: 'C03MESNUK9P'  #terraform-drift 
   google_credentials:
     required: true
     description: Google credentials

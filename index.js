@@ -1,6 +1,7 @@
 const core = require('@actions/core');
 const exec = require('@actions/exec');
 const fs = require('fs');
+const { WebClient } = require('@slack/web-api');
 
 const status_skipped = '﹣';
 const status_success = '✓';
@@ -28,21 +29,25 @@ async function shell(command, args, options = {}) {
   };
 }
 
-async function terraform(args) {
+async function terraform(terraformDirectory, args) {
   return await shell(terraformPath, args, {
-    cwd: core.getInput('terraform_directory'),
+    cwd: terraformDirectory,
   });
 }
 
 (async () => {
   let terraformDoApply = core.getBooleanInput('terraform_do_apply');
   let terraformDoDestroy = core.getBooleanInput('terraform_do_destroy');
+  const terraformDirectory = core.getInput('terraform_directory');
   const terraformLock = core.getBooleanInput('terraform_lock');
   const terraformParallelism = core.getInput('terraform_parallelism');
   const terraformPlanDestroy = (terraformDoDestroy || core.getBooleanInput('terraform_plan_destroy')) ? '-destroy' : [];
   const terraformTargets = core.getMultilineInput('terraform_targets').map((target) => `-target=${target}`);
   const terraformVariables = core.getInput('terraform_variables');
   const terraformWorkspace = core.getInput('terraform_workspace');
+  const reportDrift = core.getBooleanInput('report_drift');
+  const slackChannel = core.getInput('slack_channel_id');
+  const slackBotToken = process.env.SLACK_BOT_TOKEN;
 
   let tf_version = '<unknown>';
   let tf_init = status_skipped;
@@ -59,6 +64,20 @@ async function terraform(args) {
     core.setFailed(`Sanity checks failed. Non-integer value for 'terraform_parallelism': ${terraformParallelism}`);
     process.exit(1);
   }
+  if (reportDrift === true) {
+    if (terraformDoApply === true || terraformDoDestroy === true) {
+      core.setFailed('Sanity checks failed. Can\'t apply or destroy when reporting drift');
+      process.exit(1);
+    }
+    if (!slackChannel) {
+      core.setFailed('Sanity checks failed. Slack channel id not specified.');
+      process.exit(1);
+    }
+    if (!slackBotToken) {
+      core.setFailed('Sanity checks failed. Slack bot token not provided.');
+      process.exit(1);
+    }
+  }
   if (terraformDoApply === true && terraformDoDestroy === true) {
     core.setFailed('Sanity checks failed. Can\'t apply AND destroy in the same action');
     process.exit(1);
@@ -71,7 +90,7 @@ async function terraform(args) {
   core.endGroup();
 
   core.startGroup('Run terraform version');
-  const tfv = await terraform(['version']);
+  const tfv = await terraform(terraformDirectory, ['version']);
   core.endGroup();
   if (tfv.status > 0) {
     core.info(`status: ${tfv.status}`);
@@ -82,7 +101,7 @@ async function terraform(args) {
   }
 
   core.startGroup('Run terraform init');
-  const tfi = await terraform(['init']);
+  const tfi = await terraform(terraformDirectory, ['init']);
   core.endGroup();
   if (tfi.status > 0) {
     tf_init = status_failed;
@@ -112,7 +131,7 @@ async function terraform(args) {
   core.startGroup('Run terraform workspace selection');
   core.startGroup(`Workspace input: ${terraformWorkspace}`);
   if (terraformWorkspace) {
-    const tfws = await terraform(['workspace', 'select', terraformWorkspace]);
+    const tfws = await terraform(terraformDirectory, ['workspace', 'select', terraformWorkspace]);
     core.info(tfws.stdout);
     core.endGroup();
 
@@ -120,7 +139,7 @@ async function terraform(args) {
       tf_workspace_selection = status_failed;
 
       core.startGroup('Failed to select workspace (assuming non-existent), creating workspace...');
-      const tfwc = await terraform(['workspace', 'new', terraformWorkspace]);
+      const tfwc = await terraform(terraformDirectory, ['workspace', 'new', terraformWorkspace]);
       core.info(tfwc.stdout);
       core.endGroup();
 
@@ -143,9 +162,9 @@ async function terraform(args) {
   /* WORKSPACE SELECTION END */
 
   core.startGroup('Run terraform fmt');
-  const tffc = await terraform(['fmt', '-check']);
+  const tffc = await terraform(terraformDirectory, ['fmt', '-check']);
   if (tffc.status > 0) {
-    await terraform(['fmt', '-diff', '-write=false', '-list=false']);
+    await terraform(terraformDirectory, ['fmt', '-diff', '-write=false', '-list=false']);
   }
   core.endGroup();
   if (tffc.status > 0) {
@@ -156,8 +175,39 @@ async function terraform(args) {
     tf_fmt = status_success;
   }
 
+  if (reportDrift === true) {
+    core.startGroup('Run terraform plan');
+    let exitCode = 0;
+    const slack = new WebClient(slackBotToken);
+    const tfd = await terraform(terraformDirectory, ['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-no-color', '-detailed-exitcode'].concat(terraformTargets));
+    switch (tfd.status) {
+    case 0:
+      break;
+    case 2: {
+      core.warning('Terraform reported a diff');
+      const result = await slack.chat.postMessage({
+        icon_url: 'https://cdn.icon-icons.com/icons2/2107/PNG/512/file_type_terraform_icon_130125.png',
+        text: `Unapplied changes were detected:\n*Repository:* ${process.env.GITHUB_REPOSITORY}\n*Working directory:* ${terraformDirectory}\n*Workspace:* ${terraformWorkspace}`,
+        username: 'TreeHouse GitHub Actions',
+        channel: slackChannel,
+      });
+      if (result.ok !== true) {
+        core.setFailed(`Failed to report to slack [err:${result.error}]`);
+        exitCode = 1;
+      }
+      break;
+    }
+    default:
+      core.setFailed(`Failed to prepare the terraform plan [err:${tfp.status}]`);
+      exitCode = 1;
+      break;
+    }
+    core.endGroup();
+    process.exit(exitCode);
+  }
+
   core.startGroup('Run terraform plan');
-  const tfp = await terraform(['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-out=terraform.plan'].concat(terraformTargets).concat(terraformPlanDestroy));
+  const tfp = await terraform(terraformDirectory, ['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-out=terraform.plan'].concat(terraformTargets).concat(terraformPlanDestroy));
   core.endGroup();
   if (tfp.status > 0) {
     tf_plan = status_failed;
@@ -169,7 +219,7 @@ async function terraform(args) {
 
   core.startGroup('Run terraform apply');
   if (terraformDoApply === true) {
-    const tfa = await terraform(['apply', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve'].concat(terraformTargets).concat('terraform.plan'));
+    const tfa = await terraform(terraformDirectory, ['apply', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve'].concat(terraformTargets).concat('terraform.plan'));
     core.endGroup();
     if (tfa.status > 0) {
       tf_apply = status_failed;
@@ -185,7 +235,7 @@ async function terraform(args) {
   /* DESTROY START */
   core.startGroup('Run terraform destroy');
   if (terraformDoDestroy === true) {
-    const tfd = await terraform(['destroy', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve'].concat(terraformTargets));
+    const tfd = await terraform(terraformDirectory, ['destroy', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve'].concat(terraformTargets));
     core.info(tfd.stdout);
     core.endGroup();
     if (tfd.status > 0) {
@@ -196,8 +246,8 @@ async function terraform(args) {
 
       if (terraformWorkspace && terraformWorkspace !== 'default' && !terraformTargets) {
         core.startGroup('Run terraform workspace deletion');
-        await terraform(['workspace', 'select', 'default']); // have to switch to different workspace before deleting workspace defined in `terraformWorkspace`
-        const tfwd = await terraform(['workspace', 'delete', terraformWorkspace]); // have to switch to different workspace before deleting workspace defined in `terraformWorkspace`
+        await terraform(terraformDirectory, ['workspace', 'select', 'default']); // have to switch to different workspace before deleting workspace defined in `terraformWorkspace`
+        const tfwd = await terraform(terraformDirectory, ['workspace', 'delete', terraformWorkspace]); // have to switch to different workspace before deleting workspace defined in `terraformWorkspace`
 
         core.info(tfwd.stdout);
         core.endGroup();
