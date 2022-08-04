@@ -36,7 +36,7 @@ async function terraform(terraformDirectory, args) {
 }
 
 (async () => {
-  const terraformBackend = core.getInput('terraform_backend'); 
+  const terraformBackend = core.getInput('terraform_backend');
   let terraformDoApply = core.getBooleanInput('terraform_do_apply');
   let terraformDoDestroy = core.getBooleanInput('terraform_do_destroy');
   const terraformDirectory = core.getInput('terraform_directory');
