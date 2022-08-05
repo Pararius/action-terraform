@@ -12651,6 +12651,7 @@ async function terraform(terraformDirectory, args) {
 }
 
 (async () => {
+  const terraformBackend = core.getInput('terraform_backend');
   let terraformDoApply = core.getBooleanInput('terraform_do_apply');
   let terraformDoDestroy = core.getBooleanInput('terraform_do_destroy');
   const terraformDirectory = core.getInput('terraform_directory');
@@ -12716,7 +12717,8 @@ async function terraform(terraformDirectory, args) {
   }
 
   core.startGroup('Run terraform init');
-  const tfi = await terraform(terraformDirectory, ['init']);
+  let tfi_args = terraformBackend ? ['-backend-config=' + terraformBackend] : [];
+  const tfi = await terraform(terraformDirectory, ['init'].concat(tfi_args));
   core.endGroup();
   if (tfi.status > 0) {
     tf_init = status_failed;
