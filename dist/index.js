@@ -12717,8 +12717,8 @@ async function terraform(terraformDirectory, args) {
   }
 
   core.startGroup('Run terraform init');
-  let tfi_args = !terraformBackend ? ['init'] : ['init', '-backend-config=' + terraformBackend];
-  const tfi = await terraform(terraformDirectory, tfi_args);
+  let tfi_args = terraformBackend ? ['-backend-config=' + terraformBackend] : [];
+  const tfi = await terraform(terraformDirectory, ['init'].concat(tfi_args));
   core.endGroup();
   if (tfi.status > 0) {
     tf_init = status_failed;
