@@ -240,7 +240,7 @@ async function terraform(terraformDirectory, args) {
 
   core.startGroup('Run terraform apply');
   if (terraformDoApply === true) {
-    const tfa = await terraform(terraformDirectory, ['apply', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve'].concat(terraformTargets).concat(terraformVariableFiles).concat('terraform.plan'));
+    const tfa = await terraform(terraformDirectory, ['apply', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-auto-approve'].concat(terraformTargets).concat('terraform.plan'));
     core.endGroup();
     if (tfa.status > 0) {
       tf_apply = status_failed;
