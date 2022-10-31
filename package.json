@@ -2,7 +2,7 @@
   "dependencies": {
     "@actions/core": "^1.6.0",
     "@actions/exec": "^1.1.0",
-    "@actions/tool-cache": "^1.6.1",
+    "@actions/tool-cache": "^2.0.1",
     "@slack/web-api": "^6.7.2"
   },
   "devDependencies": {
