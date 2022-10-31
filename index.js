@@ -46,6 +46,7 @@ async function terraform(terraformDirectory, args) {
   const terraformLock = core.getBooleanInput('terraform_lock');
   const terraformParallelism = core.getInput('terraform_parallelism');
   const terraformPlanDestroy = (terraformDoDestroy || core.getBooleanInput('terraform_plan_destroy')) ? '-destroy' : [];
+  const terraformRefresh = core.getBooleanInput('terraform_refresh');
   const terraformTargets = core.getMultilineInput('terraform_targets').map((target) => `-target=${target}`);
   const terraformVariables = core.getInput('terraform_variables');
   const terraformVariableFiles = core.getMultilineInput('terraform_variable_files').map((file) => `-var-file=${file}`);
@@ -200,7 +201,7 @@ async function terraform(terraformDirectory, args) {
     core.startGroup('Run terraform plan');
     let exitCode = 0;
     const slack = new WebClient(slackBotToken);
-    const tfd = await terraform(terraformDirectory, ['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-no-color', '-detailed-exitcode'].concat(terraformTargets).concat(terraformVariableFiles));
+    const tfd = await terraform(terraformDirectory, ['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, `-refresh=${terraformRefresh}`, '-no-color', '-detailed-exitcode'].concat(terraformTargets).concat(terraformVariableFiles));
     switch (tfd.status) {
     case 0:
       break;
@@ -228,7 +229,7 @@ async function terraform(terraformDirectory, args) {
   }
 
   core.startGroup('Run terraform plan');
-  const tfp = await terraform(terraformDirectory, ['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, '-out=terraform.plan'].concat(terraformTargets).concat(terraformVariableFiles).concat(terraformPlanDestroy));
+  const tfp = await terraform(terraformDirectory, ['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, `-refresh=${terraformRefresh}`, '-out=terraform.plan'].concat(terraformTargets).concat(terraformVariableFiles).concat(terraformPlanDestroy));
   core.endGroup();
   if (tfp.status > 0) {
     tf_plan = status_failed;

@@ -24,7 +24,7 @@
     # Default: 'false'
     terraform_do_destroy: ''
 
-    # Whether to (try to) lock the state during plan/apply. Reccommended when
+    # Whether to (try to) lock the state during plan/apply. Recommended when
     # terraform_do_apply or terraform_do_destroy is set to 'true'
     # Default: 'false'
     terraform_lock: ''
@@ -32,6 +32,12 @@
     # Limit the number of concurrent operations during plan/apply
     # Default: '10'
     terraform_parallelism: ''
+
+    # Whether to (try to) refresh the state during plan/apply. Only to be used
+    # when state's so large and mostly static that refreshing it everytime is a
+    # bit overkill.
+    # Default: 'false'
+    terraform_refresh: ''
 
     # A multiline string containing targets that should be passed to terraform
     # (one per line)
