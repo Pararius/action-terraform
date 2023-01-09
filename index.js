@@ -204,6 +204,7 @@ async function terraform(terraformDirectory, args) {
     const tfd = await terraform(terraformDirectory, ['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, `-refresh=${terraformRefresh}`, '-no-color', '-detailed-exitcode'].concat(terraformTargets).concat(terraformVariableFiles));
     switch (tfd.status) {
     case 0:
+      core.setOutput('changes', 'false');
       break;
     case 2: {
       core.warning('Terraform reported a diff');
@@ -217,6 +218,7 @@ async function terraform(terraformDirectory, args) {
         core.setFailed(`Failed to report to slack [err:${result.error}]`);
         exitCode = 1;
       }
+      core.setOutput('changes', 'true');
       break;
     }
     default:
