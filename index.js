@@ -1,6 +1,6 @@
+const artifact = require('@actions/artifact');
 const core = require('@actions/core');
 const exec = require('@actions/exec');
-const artifact = require('@actions/artifact');
 const fs = require('fs');
 const path = require('path');
 const tc = require('@actions/tool-cache');

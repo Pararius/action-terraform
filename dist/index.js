@@ -23722,9 +23722,9 @@ module.exports = JSON.parse('{"application/1d-interleaved-parityfec":{"source":"
 var __webpack_exports__ = {};
 // This entry need to be wrapped in an IIFE because it need to be isolated against other modules in the chunk.
 (() => {
+const artifact = __nccwpck_require__(2605);
 const core = __nccwpck_require__(2186);
 const exec = __nccwpck_require__(1514);
-const artifact = __nccwpck_require__(2605);
 const fs = __nccwpck_require__(7147);
 const path = __nccwpck_require__(1017);
 const tc = __nccwpck_require__(7784);
