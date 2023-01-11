@@ -23969,7 +23969,7 @@ async function terraform(terraformDirectory, args) {
   }
 
   // write to file and upload to artifact storage
-  const fileName = terraformDirectory.replace('./', '').concat('.summary');
+  const fileName = terraformDirectory.replace('./', '').slice(0, -1).concat('.summary');
   try {
     fs.writeFileSync(fileName, changes);
   } catch (err) {
