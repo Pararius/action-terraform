@@ -23957,7 +23957,7 @@ async function terraform(terraformDirectory, args) {
   core.startGroup('Run terraform plan');
   const tfp = await terraform(terraformDirectory, ['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, `-refresh=${terraformRefresh}`, '-out=terraform.plan', '-detailed-exitcode'].concat(terraformTargets).concat(terraformVariableFiles).concat(terraformPlanDestroy));
   core.endGroup();
-  if (tfp.status == 1) { // see -detailed-exitcode documentation
+  if (tfp.status == 1) { // 0 = no error no changes, 1 = error, 2 = no error with changes (from -detailed-exitcode documentation)
     tf_plan = status_failed;
     core.setFailed(`Failed to prepare the terraform plan [err:${tfp.status}]`);
     terraformDoApply = false;
