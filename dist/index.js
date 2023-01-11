@@ -23969,7 +23969,7 @@ async function terraform(terraformDirectory, args) {
   // write to file and upload to artifact storage
   const fileName = terraformDirectory.replace('./', '').slice(0, -1).concat('.summary');
   try {
-    fs.writeFileSync(fileName, tfp.status == 2 ? 'true' : 'false');
+    fs.writeFileSync(fileName, tfp.status == 2 ? 'true' : 'false', { flag: 'a' });
   } catch (err) {
     core.setFailed(`Failed to save change summary to file: ${err}`);
   }
