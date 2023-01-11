@@ -243,7 +243,7 @@ async function terraform(terraformDirectory, args) {
   core.setOutput('changes', tfp.status == 2 ? 'true' : 'false');
 
   // write to file and upload to artifact storage
-  const fileName = terraformDirectory.replace('./', '').slice(0, -1).concat('.summary');
+  const fileName = terraformDirectory.replace('./', '').slice(0, -1).concat(terraformBackend ? path.parse(terraformBackend).name + '.summary' : '.summary');
   try {
     fs.writeFileSync(fileName, tfp.status == 2 ? 'true' : 'false', { flag: 'a' });
   } catch (err) {
