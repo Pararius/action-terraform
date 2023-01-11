@@ -225,6 +225,7 @@ async function terraform(terraformDirectory, args) {
       exitCode = 1;
       break;
     }
+    core.setOutput('changes', tfd.status == 2 ? 'true' : 'false');
     core.endGroup();
     process.exit(exitCode);
   }
