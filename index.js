@@ -1,5 +1,6 @@
 const core = require('@actions/core');
 const exec = require('@actions/exec');
+const artifact = require('@actions/artifact');
 const fs = require('fs');
 const path = require('path');
 const tc = require('@actions/tool-cache');
@@ -197,8 +198,6 @@ async function terraform(terraformDirectory, args) {
     tf_fmt = status_success;
   }
 
-  core.setOutput('changes', 'false'); // default to false
-
   if (reportDrift === true) {
     core.startGroup('Run terraform plan');
     let exitCode = 0;
@@ -219,7 +218,6 @@ async function terraform(terraformDirectory, args) {
         core.setFailed(`Failed to report to slack [err:${result.error}]`);
         exitCode = 1;
       }
-      core.setOutput('changes', 'true');
       break;
     }
     default:
@@ -231,6 +229,8 @@ async function terraform(terraformDirectory, args) {
     process.exit(exitCode);
   }
 
+  let changes = false;
+
   core.startGroup('Run terraform plan');
   const tfp = await terraform(terraformDirectory, ['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, `-refresh=${terraformRefresh}`, '-out=terraform.plan', '-detailed-exitcode'].concat(terraformTargets).concat(terraformVariableFiles).concat(terraformPlanDestroy));
   core.endGroup();
@@ -239,8 +239,25 @@ async function terraform(terraformDirectory, args) {
     core.setFailed(`Failed to prepare the terraform plan [err:${tfp.status}]`);
     terraformDoApply = false;
   } else {
-    core.setOutput('changes', tfp.status == 2 ? 'true' : 'false');
+    changes = tfp.status == 2;
+    core.setOutput('changes', changes ? 'true' : 'false');
     tf_plan = status_success;
+  }
+
+  // write to file and upload to artifact storage
+  const fileName = terraformDirectory.replace('./', '').concat('.summary');
+  try {
+    fs.writeFileSync(fileName, changes);
+  } catch (err) {
+    core.setFailed('Failed to save change summary to file');
+  }
+  const options = {
+    continueOnError: false
+  };
+  const artifactClient = artifact.create();
+  const uploadResponse = await artifactClient.uploadArtifact('terraform', [fileName], '.', options);
+  if (uploadResponse.failedItems.length > 0) {
+    core.setFailed('Failed to upload artfiact');
   }
 
   core.startGroup('Run terraform apply');
