@@ -229,8 +229,6 @@ async function terraform(terraformDirectory, args) {
     process.exit(exitCode);
   }
 
-  let changes = false;
-
   core.startGroup('Run terraform plan');
   const tfp = await terraform(terraformDirectory, ['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, `-refresh=${terraformRefresh}`, '-out=terraform.plan', '-detailed-exitcode'].concat(terraformTargets).concat(terraformVariableFiles).concat(terraformPlanDestroy));
   core.endGroup();
@@ -239,15 +237,15 @@ async function terraform(terraformDirectory, args) {
     core.setFailed(`Failed to prepare the terraform plan [err:${tfp.status}]`);
     terraformDoApply = false;
   } else {
-    changes = tfp.status == 2;
-    core.setOutput('changes', changes ? 'true' : 'false');
     tf_plan = status_success;
   }
+
+  core.setOutput('changes', tfp.status == 2 ? 'true' : 'false');
 
   // write to file and upload to artifact storage
   const fileName = terraformDirectory.replace('./', '').slice(0, -1).concat('.summary');
   try {
-    fs.writeFileSync(fileName, changes ? 'true' : 'false');
+    fs.writeFileSync(fileName, tfp.status == 2 ? 'true' : 'false');
   } catch (err) {
     core.setFailed(`Failed to save change summary to file: ${err}`);
   }
