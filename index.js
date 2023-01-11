@@ -249,7 +249,7 @@ async function terraform(terraformDirectory, args) {
   try {
     fs.writeFileSync(fileName, changes);
   } catch (err) {
-    core.setFailed('Failed to save change summary to file');
+    core.setFailed(`Failed to save change summary to file: ${err}`);
   }
   const options = {
     continueOnError: false
