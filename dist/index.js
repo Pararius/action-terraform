@@ -17120,6 +17120,8 @@ async function terraform(terraformDirectory, args) {
     tf_fmt = status_success;
   }
 
+  core.setOutput('changes', 'false'); // default to false
+
   if (reportDrift === true) {
     core.startGroup('Run terraform plan');
     let exitCode = 0;
@@ -17127,7 +17129,6 @@ async function terraform(terraformDirectory, args) {
     const tfd = await terraform(terraformDirectory, ['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, `-refresh=${terraformRefresh}`, '-no-color', '-detailed-exitcode'].concat(terraformTargets).concat(terraformVariableFiles));
     switch (tfd.status) {
     case 0:
-      core.setOutput('changes', 'false');
       break;
     case 2: {
       core.warning('Terraform reported a diff');
@@ -17154,13 +17155,14 @@ async function terraform(terraformDirectory, args) {
   }
 
   core.startGroup('Run terraform plan');
-  const tfp = await terraform(terraformDirectory, ['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, `-refresh=${terraformRefresh}`, '-out=terraform.plan'].concat(terraformTargets).concat(terraformVariableFiles).concat(terraformPlanDestroy));
+  const tfp = await terraform(terraformDirectory, ['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, `-refresh=${terraformRefresh}`, '-out=terraform.plan', '-detailed-exitcode'].concat(terraformTargets).concat(terraformVariableFiles).concat(terraformPlanDestroy));
   core.endGroup();
-  if (tfp.status > 0) {
+  if (tfp.status == 1) { // see -detailed-exitcode documentation
     tf_plan = status_failed;
     core.setFailed(`Failed to prepare the terraform plan [err:${tfp.status}]`);
     terraformDoApply = false;
   } else {
+    core.setOutput('changes', tfp.status == 2 ? 'true' : 'false');
     tf_plan = status_success;
   }
 
