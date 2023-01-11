@@ -1,3 +1,4 @@
+const artifact = require('@actions/artifact');
 const core = require('@actions/core');
 const exec = require('@actions/exec');
 const fs = require('fs');
@@ -224,19 +225,38 @@ async function terraform(terraformDirectory, args) {
       exitCode = 1;
       break;
     }
+    core.setOutput('changes', tfd.status == 2 ? 'true' : 'false');
     core.endGroup();
     process.exit(exitCode);
   }
 
   core.startGroup('Run terraform plan');
-  const tfp = await terraform(terraformDirectory, ['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, `-refresh=${terraformRefresh}`, '-out=terraform.plan'].concat(terraformTargets).concat(terraformVariableFiles).concat(terraformPlanDestroy));
+  const tfp = await terraform(terraformDirectory, ['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, `-refresh=${terraformRefresh}`, '-out=terraform.plan', '-detailed-exitcode'].concat(terraformTargets).concat(terraformVariableFiles).concat(terraformPlanDestroy));
   core.endGroup();
-  if (tfp.status > 0) {
+  if (tfp.status == 1) { // 0 = no error no changes, 1 = error, 2 = no error with changes (from -detailed-exitcode documentation)
     tf_plan = status_failed;
     core.setFailed(`Failed to prepare the terraform plan [err:${tfp.status}]`);
     terraformDoApply = false;
   } else {
     tf_plan = status_success;
+  }
+
+  core.setOutput('changes', tfp.status == 2 ? 'true' : 'false');
+
+  // write to file and upload to artifact storage
+  const fileName = terraformDirectory.replace('./', '').slice(0, -1).concat(terraformBackend ? '.' + path.parse(terraformBackend).name + '.summary' : '.summary');
+  try {
+    fs.writeFileSync(fileName, tfp.status == 2 ? 'true' : 'false', { flag: 'a' });
+  } catch (err) {
+    core.setFailed(`Failed to save change summary to file: ${err}`);
+  }
+  const options = {
+    continueOnError: false
+  };
+  const artifactClient = artifact.create();
+  const uploadResponse = await artifactClient.uploadArtifact('terraform', [fileName], '.', options);
+  if (uploadResponse.failedItems.length > 0) {
+    core.setFailed('Failed to upload artfiact');
   }
 
   core.startGroup('Run terraform apply');
