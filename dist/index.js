@@ -23963,7 +23963,9 @@ async function terraform(terraformDirectory, args) {
   } else {
     tf_plan = status_success;
   }
+  core.endGroup();
 
+  core.startGroup('Save terraform change status');
   core.setOutput('changes', tfp.status == 2 ? 'true' : 'false');
 
   // write to file and upload to artifact storage
@@ -23978,10 +23980,11 @@ async function terraform(terraformDirectory, args) {
   };
   const artifactClient = artifact.create();
   const uploadResponse = await artifactClient.uploadArtifact('terraform', [fileName], '.', options);
+  core.endGroup();
+
   if (uploadResponse.failedItems.length > 0) {
     core.setFailed('Failed to upload artfiact');
   }
-  core.endGroup();
 
   core.startGroup('Run terraform apply');
   if (terraformDoApply === true) {
