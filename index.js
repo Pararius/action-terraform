@@ -233,6 +233,7 @@ async function terraform(terraformDirectory, args) {
   core.startGroup('Run terraform plan');
   const tfp = await terraform(terraformDirectory, ['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, `-refresh=${terraformRefresh}`, '-out=terraform.plan', '-detailed-exitcode'].concat(terraformTargets).concat(terraformVariableFiles).concat(terraformPlanDestroy));
   core.endGroup();
+
   if (tfp.status == 1) { // 0 = no error no changes, 1 = error, 2 = no error with changes (from -detailed-exitcode documentation)
     tf_plan = status_failed;
     core.setFailed(`Failed to prepare the terraform plan [err:${tfp.status}]`);
@@ -241,6 +242,7 @@ async function terraform(terraformDirectory, args) {
     tf_plan = status_success;
   }
 
+  core.startGroup('Save terraform change status');
   core.setOutput('changes', tfp.status == 2 ? 'true' : 'false');
 
   // write to file and upload to artifact storage
@@ -255,6 +257,8 @@ async function terraform(terraformDirectory, args) {
   };
   const artifactClient = artifact.create();
   const uploadResponse = await artifactClient.uploadArtifact('terraform', [fileName], '.', options);
+  core.endGroup();
+
   if (uploadResponse.failedItems.length > 0) {
     core.setFailed('Failed to upload artfiact');
   }
