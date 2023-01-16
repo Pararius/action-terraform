@@ -23956,7 +23956,6 @@ async function terraform(terraformDirectory, args) {
 
   core.startGroup('Run terraform plan');
   const tfp = await terraform(terraformDirectory, ['plan', `-lock=${terraformLock}`, `-parallelism=${terraformParallelism}`, `-refresh=${terraformRefresh}`, '-out=terraform.plan', '-detailed-exitcode'].concat(terraformTargets).concat(terraformVariableFiles).concat(terraformPlanDestroy));
-  core.endGroup();
   if (tfp.status == 1) { // 0 = no error no changes, 1 = error, 2 = no error with changes (from -detailed-exitcode documentation)
     tf_plan = status_failed;
     core.setFailed(`Failed to prepare the terraform plan [err:${tfp.status}]`);
@@ -23982,6 +23981,7 @@ async function terraform(terraformDirectory, args) {
   if (uploadResponse.failedItems.length > 0) {
     core.setFailed('Failed to upload artfiact');
   }
+  core.endGroup();
 
   core.startGroup('Run terraform apply');
   if (terraformDoApply === true) {
