@@ -4,7 +4,7 @@
     "@actions/exec": "^1.1.1",
     "@actions/tool-cache": "^2.0.1",
     "@actions/artifact": "^1.1.2",
-    "@slack/web-api": "^6.9.0"
+    "@slack/web-api": "^7.6.0"
   },
   "devDependencies": {
     "@vercel/ncc": "^0.38.1",
