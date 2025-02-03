@@ -1,4 +1,4 @@
-const artifact = require('@actions/artifact');
+const {DefaultArtifactClient} = require('@actions/artifact');
 const core = require('@actions/core');
 const exec = require('@actions/exec');
 const fs = require('fs');
@@ -255,11 +255,11 @@ async function terraform(terraformDirectory, args) {
   const options = {
     continueOnError: false
   };
-  const artifactClient = artifact.create();
+  const artifactClient = new DefaultArtifactClient();
   const uploadResponse = await artifactClient.uploadArtifact('terraform', [fileName], '.', options);
   core.endGroup();
 
-  if (uploadResponse.failedItems.length > 0) {
+  if (!uploadResponse.size) {
     core.setFailed('Failed to upload artfiact');
   }
 
